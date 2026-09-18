@@ -12,6 +12,7 @@ class SchemaValidator:
     Numeric constraints can be defined by wrapping the schema in {'type': ..., 'min': ..., 'max': ...}
     String constraints can be defined by wrapping the schema in {'type': 'string', 'min_length': ..., 'max_length': ...}
     List constraints can be defined by wrapping the schema in {'type': 'list', 'items': ...}
+    Enum constraints can be defined by adding an 'enum' key with a list of allowed values.
     """
     
     TYPE_MAP = {
@@ -64,6 +65,14 @@ class SchemaValidator:
                     item_schema = schema["items"]
                     for i, item in enumerate(data):
                         self._validate_recursive(item_schema, item, f"{path}[{i}]", errors)
+                
+                # Enum validation
+                if "enum" in schema:
+                    allowed_values = schema["enum"]
+                    if not isinstance(allowed_values, list):
+                        errors.append(f"Invalid schema definition: 'enum' must be a list at {path}")
+                    elif data not in allowed_values:
+                        errors.append(f"Value at {path} must be one of {allowed_values}, got {repr(data)}")
                 
                 return
 

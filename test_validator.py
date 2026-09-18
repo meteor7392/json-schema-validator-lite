@@ -109,5 +109,19 @@ class TestSchemaValidator(unittest.TestCase):
         self.assertFalse(is_valid)
         self.assertIn("Expected integer at root.user.id, got str", errors)
 
+    def test_enum_validation(self):
+        schema = {
+            "status": {"type": "string", "enum": ["pending", "active", "closed"]}
+        }
+        
+        # Valid
+        v1 = SchemaValidator(schema).validate({"status": "active"})
+        self.assertTrue(v1[0])
+        
+        # Invalid
+        v2 = SchemaValidator(schema).validate({"status": "unknown"})
+        self.assertFalse(v2[0])
+        self.assertIn("Value at root.status must be one of ['pending', 'active', 'closed'], got 'unknown'", v2[1])
+
 if __name__ == "__main__":
     unittest.main()
