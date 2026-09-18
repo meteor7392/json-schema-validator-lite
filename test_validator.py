@@ -175,5 +175,31 @@ class TestSchemaValidator(unittest.TestCase):
         self.assertFalse(v2[0])
         self.assertIn("Value at root.status must be one of ['pending', 'active', 'closed'], got 'unknown'", v2[1])
 
+    def test_anyof_validation(self):
+        schema = {
+            "id": {
+                "anyOf": [
+                    {"type": "string"},
+                    {"type": "integer"}
+                ]
+            }
+        }
+        self.assertTrue(SchemaValidator(schema).validate({"id": "abc"})[0])
+        self.assertTrue(SchemaValidator(schema).validate({"id": 123})[0])
+        self.assertFalse(SchemaValidator(schema).validate({"id": 12.3})[0])
+
+    def test_allof_validation(self):
+        schema = {
+            "score": {
+                "allOf": [
+                    {"type": "integer"},
+                    {"min": 0, "max": 100}
+                ]
+            }
+        }
+        self.assertTrue(SchemaValidator(schema).validate({"score": 50})[0])
+        self.assertFalse(SchemaValidator(schema).validate({"score": 150})[0])
+        self.assertFalse(SchemaValidator(schema).validate({"score": "50"})[0])
+
 if __name__ == "__main__":
     unittest.main()

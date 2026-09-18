@@ -15,6 +15,7 @@ class SchemaValidator:
     List constraints can be defined by wrapping the schema in {'type': 'list', 'items': ..., 'min_items': ..., 'max_items': ...}
     Dict constraints can be defined by wrapping the schema in {'type': 'dict', 'min_properties': ..., 'max_properties': ...}
     Enum constraints can be defined by adding an 'enum' key with a list of allowed values.
+    Composition constraints can be defined by using 'anyOf' or 'allOf' with a list of schemas.
     """
     
     TYPE_MAP = {
@@ -43,6 +44,36 @@ class SchemaValidator:
             self._check_type(schema, data, path, errors)
         
         elif isinstance(schema, dict):
+            # Composition: anyOf
+            if "anyOf" in schema:
+                options = schema["anyOf"]
+                if not isinstance(options, list):
+                    errors.append(f"Invalid schema definition: 'anyOf' must be a list at {path}")
+                    return
+                
+                any_valid = False
+                for opt_schema in options:
+                    opt_errors = []
+                    self._validate_recursive(opt_schema, data, path, opt_errors)
+                    if not opt_errors:
+                        any_valid = True
+                        break
+                
+                if not any_valid:
+                    errors.append(f"Value at {path} does not match any of the required schemas in anyOf")
+                return
+
+            # Composition: allOf
+            if "allOf" in schema:
+                options = schema["allOf"]
+                if not isinstance(options, list):
+                    errors.append(f"Invalid schema definition: 'allOf' must be a list at {path}")
+                    return
+                
+                for opt_schema in options:
+                    self._validate_recursive(opt_schema, data, path, errors)
+                return
+
             # Check if this is a constraint definition rather than a nested object
             if "type" in schema:
                 type_name = schema["type"]
