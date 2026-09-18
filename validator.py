@@ -11,7 +11,8 @@ class SchemaValidator:
     Optional fields can be defined by wrapping the schema in {'optional': ...}
     Numeric constraints can be defined by wrapping the schema in {'type': ..., 'min': ..., 'max': ...}
     String constraints can be defined by wrapping the schema in {'type': 'string', 'min_length': ..., 'max_length': ...}
-    List constraints can be defined by wrapping the schema in {'type': 'list', 'items': ...}
+    List constraints can be defined by wrapping the schema in {'type': 'list', 'items': ..., 'min_items': ..., 'max_items': ...}
+    Dict constraints can be defined by wrapping the schema in {'type': 'dict', 'min_properties': ..., 'max_properties': ...}
     Enum constraints can be defined by adding an 'enum' key with a list of allowed values.
     """
     
@@ -60,11 +61,24 @@ class SchemaValidator:
                     if "max_length" in schema and len(data) > schema["max_length"]:
                         errors.append(f"String at {path} is too long (max_length: {schema['max_length']})")
                 
-                # Item validation for lists
-                elif isinstance(data, list) and "items" in schema:
-                    item_schema = schema["items"]
-                    for i, item in enumerate(data):
-                        self._validate_recursive(item_schema, item, f"{path}[{i}]", errors)
+                # Item and size validation for lists
+                elif isinstance(data, list):
+                    if "min_items" in schema and len(data) < schema["min_items"]:
+                        errors.append(f"List at {path} is too short (min_items: {schema['min_items']})")
+                    if "max_items" in schema and len(data) > schema["max_items"]:
+                        errors.append(f"List at {path} is too long (max_items: {schema['max_items']})")
+                    
+                    if "items" in schema:
+                        item_schema = schema["items"]
+                        for i, item in enumerate(data):
+                            self._validate_recursive(item_schema, item, f"{path}[{i}]", errors)
+                
+                # Size validation for dicts
+                elif isinstance(data, dict):
+                    if "min_properties" in schema and len(data) < schema["min_properties"]:
+                        errors.append(f"Dict at {path} has too few properties (min_properties: {schema['min_properties']})")
+                    if "max_properties" in schema and len(data) > schema["max_properties"]:
+                        errors.append(f"Dict at {path} has too many properties (max_properties: {schema['max_properties']})")
                 
                 # Enum validation
                 if "enum" in schema:

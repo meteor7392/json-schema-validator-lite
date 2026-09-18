@@ -101,6 +101,44 @@ class TestSchemaValidator(unittest.TestCase):
         self.assertFalse(v2[0])
         self.assertIn("Expected string at root.tags[1], got int", v2[1])
 
+    def test_list_size_validation(self):
+        schema = {
+            "tags": {"type": "list", "min_items": 2, "max_items": 3}
+        }
+        
+        # Too few
+        v1 = SchemaValidator(schema).validate({"tags": ["a"]})
+        self.assertFalse(v1[0])
+        self.assertIn("List at root.tags is too short (min_items: 2)", v1[1])
+        
+        # Too many
+        v2 = SchemaValidator(schema).validate({"tags": ["a", "b", "c", "d"]})
+        self.assertFalse(v2[0])
+        self.assertIn("List at root.tags is too long (max_items: 3)", v2[1])
+        
+        # Valid
+        v3 = SchemaValidator(schema).validate({"tags": ["a", "b"]})
+        self.assertTrue(v3[0])
+
+    def test_dict_size_validation(self):
+        schema = {
+            "meta": {"type": "dict", "min_properties": 1, "max_properties": 2}
+        }
+        
+        # Too few
+        v1 = SchemaValidator(schema).validate({"meta": {}})
+        self.assertFalse(v1[0])
+        self.assertIn("Dict at root.meta has too few properties (min_properties: 1)", v1[1])
+        
+        # Too many
+        v2 = SchemaValidator(schema).validate({"meta": {"a": 1, "b": 2, "c": 3}})
+        self.assertFalse(v2[0])
+        self.assertIn("Dict at root.meta has too many properties (max_properties: 2)", v2[1])
+        
+        # Valid
+        v3 = SchemaValidator(schema).validate({"meta": {"a": 1}})
+        self.assertTrue(v3[0])
+
     def test_nested_invalid(self):
         schema = {"user": {"id": "integer"}}
         data = {"user": {"id": "abc"}}
