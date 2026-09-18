@@ -68,6 +68,39 @@ class TestSchemaValidator(unittest.TestCase):
         v3 = SchemaValidator(schema).validate({"score": 50})
         self.assertTrue(v3[0])
 
+    def test_string_constraints(self):
+        schema = {
+            "username": {"type": "string", "min_length": 3, "max_length": 10}
+        }
+        
+        # Too short
+        v1 = SchemaValidator(schema).validate({"username": "ab"})
+        self.assertFalse(v1[0])
+        self.assertIn("String at root.username is too short (min_length: 3)", v1[1])
+        
+        # Too long
+        v2 = SchemaValidator(schema).validate({"username": "verylongusername"})
+        self.assertFalse(v2[0])
+        self.assertIn("String at root.username is too long (max_length: 10)", v2[1])
+        
+        # Valid
+        v3 = SchemaValidator(schema).validate({"username": "bob"})
+        self.assertTrue(v3[0])
+
+    def test_list_item_validation(self):
+        schema = {
+            "tags": {"type": "list", "items": "string"}
+        }
+        
+        # Valid
+        v1 = SchemaValidator(schema).validate({"tags": ["a", "b"]})
+        self.assertTrue(v1[0])
+        
+        # Invalid item
+        v2 = SchemaValidator(schema).validate({"tags": ["a", 1]})
+        self.assertFalse(v2[0])
+        self.assertIn("Expected string at root.tags[1], got int", v2[1])
+
     def test_nested_invalid(self):
         schema = {"user": {"id": "integer"}}
         data = {"user": {"id": "abc"}}

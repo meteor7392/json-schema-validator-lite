@@ -10,6 +10,8 @@ class SchemaValidator:
     Supported types: 'string', 'integer', 'float', 'boolean', 'list', 'dict'
     Optional fields can be defined by wrapping the schema in {'optional': ...}
     Numeric constraints can be defined by wrapping the schema in {'type': ..., 'min': ..., 'max': ...}
+    String constraints can be defined by wrapping the schema in {'type': 'string', 'min_length': ..., 'max_length': ...}
+    List constraints can be defined by wrapping the schema in {'type': 'list', 'items': ...}
     """
     
     TYPE_MAP = {
@@ -49,6 +51,20 @@ class SchemaValidator:
                         errors.append(f"Value at {path} is too small (min: {schema['min']})")
                     if "max" in schema and data > schema["max"]:
                         errors.append(f"Value at {path} is too large (max: {schema['max']})")
+                
+                # Length validation for strings
+                elif isinstance(data, str):
+                    if "min_length" in schema and len(data) < schema["min_length"]:
+                        errors.append(f"String at {path} is too short (min_length: {schema['min_length']})")
+                    if "max_length" in schema and len(data) > schema["max_length"]:
+                        errors.append(f"String at {path} is too long (max_length: {schema['max_length']})")
+                
+                # Item validation for lists
+                elif isinstance(data, list) and "items" in schema:
+                    item_schema = schema["items"]
+                    for i, item in enumerate(data):
+                        self._validate_recursive(item_schema, item, f"{path}[{i}]", errors)
+                
                 return
 
             # Object validation
