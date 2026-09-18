@@ -1,4 +1,5 @@
 from typing import Any, Dict, List, Tuple, Union
+import re
 
 class SchemaValidationError(Exception):
     """Custom exception for schema validation errors."""
@@ -10,7 +11,7 @@ class SchemaValidator:
     Supported types: 'string', 'integer', 'float', 'boolean', 'list', 'dict'
     Optional fields can be defined by wrapping the schema in {'optional': ...}
     Numeric constraints can be defined by wrapping the schema in {'type': ..., 'min': ..., 'max': ...}
-    String constraints can be defined by wrapping the schema in {'type': 'string', 'min_length': ..., 'max_length': ...}
+    String constraints can be defined by wrapping the schema in {'type': 'string', 'min_length': ..., 'max_length': ..., 'pattern': ...}
     List constraints can be defined by wrapping the schema in {'type': 'list', 'items': ..., 'min_items': ..., 'max_items': ...}
     Dict constraints can be defined by wrapping the schema in {'type': 'dict', 'min_properties': ..., 'max_properties': ...}
     Enum constraints can be defined by adding an 'enum' key with a list of allowed values.
@@ -54,12 +55,16 @@ class SchemaValidator:
                     if "max" in schema and data > schema["max"]:
                         errors.append(f"Value at {path} is too large (max: {schema['max']})")
                 
-                # Length validation for strings
+                # Length and pattern validation for strings
                 elif isinstance(data, str):
                     if "min_length" in schema and len(data) < schema["min_length"]:
                         errors.append(f"String at {path} is too short (min_length: {schema['min_length']})")
                     if "max_length" in schema and len(data) > schema["max_length"]:
                         errors.append(f"String at {path} is too long (max_length: {schema['max_length']})")
+                    if "pattern" in schema:
+                        pattern = schema["pattern"]
+                        if not re.search(pattern, data):
+                            errors.append(f"String at {path} does not match pattern: {pattern}")
                 
                 # Item and size validation for lists
                 elif isinstance(data, list):

@@ -87,6 +87,20 @@ class TestSchemaValidator(unittest.TestCase):
         v3 = SchemaValidator(schema).validate({"username": "bob"})
         self.assertTrue(v3[0])
 
+    def test_string_pattern(self):
+        schema = {
+            "email": {"type": "string", "pattern": r"^\S+@\S+\.\S+$"}
+        }
+        
+        # Valid
+        v1 = SchemaValidator(schema).validate({"email": "test@example.com"})
+        self.assertTrue(v1[0])
+        
+        # Invalid
+        v2 = SchemaValidator(schema).validate({"email": "not-an-email"})
+        self.assertFalse(v2[0])
+        self.assertIn("String at root.email does not match pattern: ^\\S+@\\S+\\.\\S+$", v2[1])
+
     def test_list_item_validation(self):
         schema = {
             "tags": {"type": "list", "items": "string"}
