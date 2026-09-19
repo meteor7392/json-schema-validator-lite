@@ -201,5 +201,31 @@ class TestSchemaValidator(unittest.TestCase):
         self.assertFalse(SchemaValidator(schema).validate({"score": 150})[0])
         self.assertFalse(SchemaValidator(schema).validate({"score": "50"})[0])
 
+    def test_oneof_validation(self):
+        schema = {
+            "value": {
+                "oneOf": [
+                    {"type": "string"},
+                    {"type": "integer"}
+                ]
+            }
+        }
+        # Valid cases
+        self.assertTrue(SchemaValidator(schema).validate({"value": "abc"})[0])
+        self.assertTrue(SchemaValidator(schema).validate({"value": 123})[0])
+        # Invalid cases
+        self.assertFalse(SchemaValidator(schema).validate({"value": 12.3})[0])
+
+    def test_not_validation(self):
+        schema = {
+            "value": {
+                "not": {"type": "integer"}
+            }
+        }
+        # Valid case (is a string, so NOT an integer)
+        self.assertTrue(SchemaValidator(schema).validate({"value": "abc"})[0])
+        # Invalid case (is an integer)
+        self.assertFalse(SchemaValidator(schema).validate({"value": 123})[0])
+
 if __name__ == "__main__":
     unittest.main()

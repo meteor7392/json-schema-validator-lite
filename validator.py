@@ -15,7 +15,7 @@ class SchemaValidator:
     List constraints can be defined by wrapping the schema in {'type': 'list', 'items': ..., 'min_items': ..., 'max_items': ...}
     Dict constraints can be defined by wrapping the schema in {'type': 'dict', 'min_properties': ..., 'max_properties': ...}
     Enum constraints can be defined by adding an 'enum' key with a list of allowed values.
-    Composition constraints can be defined by using 'anyOf' or 'allOf' with a list of schemas.
+    Composition constraints can be defined by using 'anyOf', 'allOf', 'oneOf' with a list of schemas, or 'not' for negation.
     """
     
     TYPE_MAP = {
@@ -72,6 +72,33 @@ class SchemaValidator:
                 
                 for opt_schema in options:
                     self._validate_recursive(opt_schema, data, path, errors)
+                return
+
+            # Composition: oneOf
+            if "oneOf" in schema:
+                options = schema["oneOf"]
+                if not isinstance(options, list):
+                    errors.append(f"Invalid schema definition: 'oneOf' must be a list at {path}")
+                    return
+                
+                valid_count = 0
+                for opt_schema in options:
+                    opt_errors = []
+                    self._validate_recursive(opt_schema, data, path, opt_errors)
+                    if not opt_errors:
+                        valid_count += 1
+                
+                if valid_count != 1:
+                    errors.append(f"Value at {path} must match exactly one schema in oneOf (matched {valid_count})")
+                return
+
+            # Negation: not
+            if "not" in schema:
+                neg_schema = schema["not"]
+                neg_errors = []
+                self._validate_recursive(neg_schema, data, path, neg_errors)
+                if not neg_errors:
+                    errors.append(f"Value at {path} must NOT match the schema provided in 'not'")
                 return
 
             # Check if this is a constraint definition rather than a nested object
