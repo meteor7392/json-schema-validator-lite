@@ -158,19 +158,34 @@ class SchemaValidator:
                 errors.append(f"Expected dict at {path}, got {type(data).__name__}")
                 return
             
+            # Check for dependencies
+            if "dependencies" in schema:
+                deps = schema["dependencies"]
+                if not isinstance(deps, dict):
+                    errors.append(f"Invalid schema definition: 'dependencies' must be a dict at {path}")
+                else:
+                    for key, required_fields in deps.items():
+                        if key in data:
+                            if not isinstance(required_fields, list):
+                                errors.append(f"Invalid schema definition: dependencies for {key} must be a list at {path}")
+                                continue
+                            for field in required_fields:
+                                if field not in data:
+                                    errors.append(f"Field {path}.{field} is required because {path}.{key} is present")
+
             # Check for additionalProperties
             additional_properties = schema.get("additionalProperties", True)
             
             # We need to know which fields are explicitly defined in the schema
             defined_fields = set()
             for key, rules in schema.items():
-                if key == "additionalProperties":
+                if key in ("additionalProperties", "dependencies"):
                     continue
                 defined_fields.add(key)
 
             # Validate defined fields
             for key, rules in schema.items():
-                if key == "additionalProperties":
+                if key in ("additionalProperties", "dependencies"):
                     continue
                 
                 current_path = f"{path}.{key}"

@@ -248,5 +248,28 @@ class TestSchemaValidator(unittest.TestCase):
         self.assertFalse(v2[0])
         self.assertIn("Expected integer at root.age, got str", v2[1])
 
+    def test_dependencies_validation(self):
+        schema = {
+            "credit_card": "string",
+            "billing_address": "string",
+            "dependencies": {
+                "credit_card": ["billing_address"]
+            }
+        }
+        # Valid: both present
+        self.assertTrue(SchemaValidator(schema).validate({
+            "credit_card": "1234", 
+            "billing_address": "123 St"
+        })[0])
+        
+        # Valid: neither present (credit_card not present, so billing_address not required)
+        self.assertTrue(SchemaValidator(schema).validate({})
+            [0])
+        
+        # Invalid: credit_card present but billing_address missing
+        v1 = SchemaValidator(schema).validate({"credit_card": "1234"})
+        self.assertFalse(v1[0])
+        self.assertIn("Field root.billing_address is required because root.credit_card is present", v1[1])
+
 if __name__ == "__main__":
     unittest.main()
