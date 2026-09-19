@@ -227,5 +227,26 @@ class TestSchemaValidator(unittest.TestCase):
         # Invalid case (is an integer)
         self.assertFalse(SchemaValidator(schema).validate({"value": 123})[0])
 
+    def test_additional_properties(self):
+        # Case 1: additionalProperties = False (prohibit)
+        schema_strict = {
+            "name": "string",
+            "additionalProperties": False
+        }
+        self.assertTrue(SchemaValidator(schema_strict).validate({"name": "Bob"})[0])
+        v1 = SchemaValidator(schema_strict).validate({"name": "Bob", "age": 25})
+        self.assertFalse(v1[0])
+        self.assertIn("Additional property age not allowed at root", v1[1])
+
+        # Case 2: additionalProperties = schema (validate additional)
+        schema_flexible = {
+            "name": "string",
+            "additionalProperties": "integer"
+        }
+        self.assertTrue(SchemaValidator(schema_flexible).validate({"name": "Bob", "age": 25})[0])
+        v2 = SchemaValidator(schema_flexible).validate({"name": "Bob", "age": "twenty-five"})
+        self.assertFalse(v2[0])
+        self.assertIn("Expected integer at root.age, got str", v2[1])
+
 if __name__ == "__main__":
     unittest.main()

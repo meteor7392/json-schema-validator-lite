@@ -158,7 +158,21 @@ class SchemaValidator:
                 errors.append(f"Expected dict at {path}, got {type(data).__name__}")
                 return
             
+            # Check for additionalProperties
+            additional_properties = schema.get("additionalProperties", True)
+            
+            # We need to know which fields are explicitly defined in the schema
+            defined_fields = set()
             for key, rules in schema.items():
+                if key == "additionalProperties":
+                    continue
+                defined_fields.add(key)
+
+            # Validate defined fields
+            for key, rules in schema.items():
+                if key == "additionalProperties":
+                    continue
+                
                 current_path = f"{path}.{key}"
                 
                 # Check for optional flag
@@ -173,6 +187,16 @@ class SchemaValidator:
                         errors.append(f"Missing required field: {current_path}")
                 else:
                     self._validate_recursive(actual_rules, data[key], current_path, errors)
+
+            # Validate additional fields
+            if additional_properties is False:
+                for key in data:
+                    if key not in defined_fields:
+                        errors.append(f"Additional property {key} not allowed at {path}")
+            elif isinstance(additional_properties, (str, dict)):
+                for key in data:
+                    if key not in defined_fields:
+                        self._validate_recursive(additional_properties, data[key], f"{path}.{key}", errors)
         
         else:
             errors.append(f"Unsupported schema definition at {path}")
