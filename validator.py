@@ -226,7 +226,19 @@ class SchemaValidator:
                     actual_rules = rules["optional"]
 
                 if key not in data:
-                    if not is_optional:
+                    # Handle default value
+                    default_val = None
+                    has_default = False
+                    if isinstance(rules, dict) and "default" in rules:
+                        default_val = rules["default"]
+                        has_default = True
+                    elif isinstance(actual_rules, dict) and "default" in actual_rules:
+                        default_val = actual_rules["default"]
+                        has_default = True
+
+                    if has_default:
+                        self._validate_recursive(actual_rules, default_val, current_path, errors)
+                    elif not is_optional:
                         # Check if the field is missing from the 'required' list if 'required' is defined
                         required_list = schema.get("required")
                         if required_list is not None:
@@ -245,9 +257,16 @@ class SchemaValidator:
             if isinstance(required_list, list):
                 for req_field in required_list:
                     if req_field not in data:
-                        current_path = f"{path}.{req_field}"
-                        if not any(current_path in err for err in errors):
-                            errors.append(f"Missing required field: {current_path}")
+                        # Check for default value in properties or schema
+                        has_default = False
+                        prop_rules = properties_schema.get(req_field) if req_field in properties_schema else schema.get(req_field)
+                        if isinstance(prop_rules, dict) and "default" in prop_rules:
+                            has_default = True
+                        
+                        if not has_default:
+                            current_path = f"{path}.{req_field}"
+                            if not any(current_path in err for err in errors):
+                                errors.append(f"Missing required field: {current_path}")
 
             # Validate additional fields
             if additional_properties is False:
