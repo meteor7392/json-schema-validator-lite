@@ -271,5 +271,24 @@ class TestSchemaValidator(unittest.TestCase):
         self.assertFalse(v1[0])
         self.assertIn("Field root.billing_address is required because root.credit_card is present", v1[1])
 
+    def test_generic_min_max(self):
+        # String length via min/max
+        s_schema = {"text": {"type": "string", "min": 3, "max": 5}}
+        self.assertTrue(SchemaValidator(s_schema).validate({"text": "abc"})[0])
+        self.assertFalse(SchemaValidator(s_schema).validate({"text": "ab"})[0])
+        self.assertFalse(SchemaValidator(s_schema).validate({"text": "abcdef"})[0])
+
+        # List size via min/max
+        l_schema = {"tags": {"type": "list", "min": 1, "max": 2}}
+        self.assertTrue(SchemaValidator(l_schema).validate({"tags": [1]})[0])
+        self.assertFalse(SchemaValidator(l_schema).validate({"tags": []})[0])
+        self.assertFalse(SchemaValidator(l_schema).validate({"tags": [1, 2, 3]})[0])
+
+        # Dict size via min/max
+        d_schema = {"meta": {"type": "dict", "min": 1, "max": 2}}
+        self.assertTrue(SchemaValidator(d_schema).validate({"meta": {"a": 1}})[0])
+        self.assertFalse(SchemaValidator(d_schema).validate({"meta": {}})[0])
+        self.assertFalse(SchemaValidator(d_schema).validate({"meta": {"a": 1, "b": 2, "c": 3}})[0])
+
 if __name__ == "__main__":
     unittest.main()

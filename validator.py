@@ -115,10 +115,17 @@ class SchemaValidator:
                 
                 # Length and pattern validation for strings
                 elif isinstance(data, str):
-                    if "min_length" in schema and len(data) < schema["min_length"]:
+                    length = len(data)
+                    if "min_length" in schema and length < schema["min_length"]:
                         errors.append(f"String at {path} is too short (min_length: {schema['min_length']})")
-                    if "max_length" in schema and len(data) > schema["max_length"]:
+                    elif "min" in schema and length < schema["min"]:
+                        errors.append(f"String at {path} is too short (min: {schema['min']})")
+                    
+                    if "max_length" in schema and length > schema["max_length"]:
                         errors.append(f"String at {path} is too long (max_length: {schema['max_length']})")
+                    elif "max" in schema and length > schema["max"]:
+                        errors.append(f"String at {path} is too long (max: {schema['max']})")
+                    
                     if "pattern" in schema:
                         pattern = schema["pattern"]
                         if not re.search(pattern, data):
@@ -126,10 +133,16 @@ class SchemaValidator:
                 
                 # Item and size validation for lists
                 elif isinstance(data, list):
-                    if "min_items" in schema and len(data) < schema["min_items"]:
+                    length = len(data)
+                    if "min_items" in schema and length < schema["min_items"]:
                         errors.append(f"List at {path} is too short (min_items: {schema['min_items']})")
-                    if "max_items" in schema and len(data) > schema["max_items"]:
+                    elif "min" in schema and length < schema["min"]:
+                        errors.append(f"List at {path} is too short (min: {schema['min']})")
+                    
+                    if "max_items" in schema and length > schema["max_items"]:
                         errors.append(f"List at {path} is too long (max_items: {schema['max_items']})")
+                    elif "max" in schema and length > schema["max"]:
+                        errors.append(f"List at {path} is too long (max: {schema['max']})")
                     
                     if "items" in schema:
                         item_schema = schema["items"]
@@ -138,10 +151,16 @@ class SchemaValidator:
                 
                 # Size validation for dicts
                 elif isinstance(data, dict):
-                    if "min_properties" in schema and len(data) < schema["min_properties"]:
+                    length = len(data)
+                    if "min_properties" in schema and length < schema["min_properties"]:
                         errors.append(f"Dict at {path} has too few properties (min_properties: {schema['min_properties']})")
-                    if "max_properties" in schema and len(data) > schema["max_properties"]:
+                    elif "min" in schema and length < schema["min"]:
+                        errors.append(f"Dict at {path} has too few properties (min: {schema['min']})")
+                    
+                    if "max_properties" in schema and length > schema["max_properties"]:
                         errors.append(f"Dict at {path} has too many properties (max_properties: {schema['max_properties']})")
+                    elif "max" in schema and length > schema["max"]:
+                        errors.append(f"Dict at {path} has too many properties (max: {schema['max']})")
                 
                 # Enum validation
                 if "enum" in schema:
