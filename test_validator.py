@@ -290,5 +290,28 @@ class TestSchemaValidator(unittest.TestCase):
         self.assertFalse(SchemaValidator(d_schema).validate({"meta": {}})[0])
         self.assertFalse(SchemaValidator(d_schema).validate({"meta": {"a": 1, "b": 2, "c": 3}})[0])
 
+    def test_required_list(self):
+        schema = {
+            "type": "dict",
+            "required": ["id", "name"],
+            "properties": {
+                "id": "integer",
+                "name": "string"
+            }
+        }
+        # Correct: both required present
+        self.assertTrue(SchemaValidator(schema).validate({"id": 1, "name": "Bob"})[0])
+        # Incorrect: missing id
+        v1 = SchemaValidator(schema).validate({"name": "Bob"})
+        self.assertFalse(v1[0])
+        self.assertIn("Missing required field: root.id", v1[1])
+
+    def test_float_allows_int(self):
+        schema = {"value": "float"}
+        # float value
+        self.assertTrue(SchemaValidator(schema).validate({"value": 1.5})[0])
+        # integer value (should be valid as float)
+        self.assertTrue(SchemaValidator(schema).validate({"value": 1})[0])
+
 if __name__ == "__main__":
     unittest.main()

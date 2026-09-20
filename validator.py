@@ -198,13 +198,13 @@ class SchemaValidator:
             # We need to know which fields are explicitly defined in the schema
             defined_fields = set()
             for key, rules in schema.items():
-                if key in ("additionalProperties", "dependencies"):
+                if key in ("additionalProperties", "dependencies", "required"):
                     continue
                 defined_fields.add(key)
 
             # Validate defined fields
             for key, rules in schema.items():
-                if key in ("additionalProperties", "dependencies"):
+                if key in ("additionalProperties", "dependencies", "required"):
                     continue
                 
                 current_path = f"{path}.{key}"
@@ -218,9 +218,28 @@ class SchemaValidator:
 
                 if key not in data:
                     if not is_optional:
-                        errors.append(f"Missing required field: {current_path}")
+                        # Also check if the field is missing from the 'required' list if 'required' is defined
+                        required_list = schema.get("required")
+                        if required_list is not None:
+                            if not isinstance(required_list, list):
+                                errors.append(f"Invalid schema definition: 'required' must be a list at {path}")
+                            elif key not in required_list:
+                                is_optional = True
+                        
+                        if not is_optional:
+                            errors.append(f"Missing required field: {current_path}")
                 else:
                     self._validate_recursive(actual_rules, data[key], current_path, errors)
+
+            # Handle 'required' list for fields NOT explicitly listed in schema keys
+            required_list = schema.get("required")
+            if isinstance(required_list, list):
+                for req_field in required_list:
+                    if req_field not in data:
+                        current_path = f"{path}.{req_field}"
+                        # Check if it was already reported by the defined fields loop
+                        if not any(current_path in err for err in errors):
+                            errors.append(f"Missing required field: {current_path}")
 
             # Validate additional fields
             if additional_properties is False:
@@ -241,5 +260,9 @@ class SchemaValidator:
             errors.append(f"Invalid schema type '{type_name}' at {path}")
             return
         
+        # Allow integers to be treated as floats
+        if type_name == "float" and isinstance(data, int):
+            return
+
         if not isinstance(data, expected_type):
             errors.append(f"Expected {type_name} at {path}, got {type(data).__name__}")
