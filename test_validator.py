@@ -313,5 +313,23 @@ class TestSchemaValidator(unittest.TestCase):
         # integer value (should be valid as float)
         self.assertTrue(SchemaValidator(schema).validate({"value": 1})[0])
 
+    def test_defaults_mutation(self):
+        schema = {
+            "name": "string",
+            "role": {"type": "string", "default": "user"}
+        }
+        data = {"name": "Alice"}
+        validator = SchemaValidator(schema)
+        
+        # No mutation
+        is_valid, _ = validator.validate(data, mutate=False)
+        self.assertTrue(is_valid)
+        self.assertNotIn("role", data)
+        
+        # With mutation
+        is_valid_m, _ = validator.validate(data, mutate=True)
+        self.assertTrue(is_valid_m)
+        self.assertEqual(data["role"], "user")
+
 if __name__ == "__main__":
     unittest.main()

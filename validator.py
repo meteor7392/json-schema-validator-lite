@@ -30,16 +30,17 @@ class SchemaValidator:
     def __init__(self, schema: Dict[str, Any]):
         self.schema = schema
 
-    def validate(self, data: Any) -> Tuple[bool, List[str]]:
+    def validate(self, data: Any, mutate: bool = False) -> Tuple[bool, List[str]]:
         """
         Validates the provided data against the schema.
         Returns a tuple of (is_valid, list_of_errors).
+        If mutate is True, missing fields with default values will be added to the data.
         """
         errors = []
-        self._validate_recursive(self.schema, data, "root", errors)
+        self._validate_recursive(self.schema, data, "root", errors, mutate)
         return len(errors) == 0, errors
 
-    def _validate_recursive(self, schema: Any, data: Any, path: str, errors: List[str]):
+    def _validate_recursive(self, schema: Any, data: Any, path: str, errors: List[str], mutate: bool = False):
         if isinstance(schema, str):
             self._check_type(schema, data, path, errors)
         
@@ -54,7 +55,7 @@ class SchemaValidator:
                 any_valid = False
                 for opt_schema in options:
                     opt_errors = []
-                    self._validate_recursive(opt_schema, data, path, opt_errors)
+                    self._validate_recursive(opt_schema, data, path, opt_errors, mutate)
                     if not opt_errors:
                         any_valid = True
                         break
@@ -71,7 +72,7 @@ class SchemaValidator:
                     return
                 
                 for opt_schema in options:
-                    self._validate_recursive(opt_schema, data, path, errors)
+                    self._validate_recursive(opt_schema, data, path, errors, mutate)
                 return
 
             # Composition: oneOf
@@ -84,7 +85,7 @@ class SchemaValidator:
                 valid_count = 0
                 for opt_schema in options:
                     opt_errors = []
-                    self._validate_recursive(opt_schema, data, path, opt_errors)
+                    self._validate_recursive(opt_schema, data, path, opt_errors, mutate)
                     if not opt_errors:
                         valid_count += 1
                 
@@ -96,7 +97,7 @@ class SchemaValidator:
             if "not" in schema:
                 neg_schema = schema["not"]
                 neg_errors = []
-                self._validate_recursive(neg_schema, data, path, neg_errors)
+                self._validate_recursive(neg_schema, data, path, neg_errors, mutate)
                 if not neg_errors:
                     errors.append(f"Value at {path} must NOT match the schema provided in 'not'")
                 return
@@ -147,7 +148,7 @@ class SchemaValidator:
                     if "items" in schema:
                         item_schema = schema["items"]
                         for i, item in enumerate(data):
-                            self._validate_recursive(item_schema, item, f"{path}[{i}]", errors)
+                            self._validate_recursive(item_schema, item, f"{path}[{i}]", errors, mutate)
                 
                 # Size validation for dicts
                 elif isinstance(data, dict):
@@ -237,7 +238,9 @@ class SchemaValidator:
                         has_default = True
 
                     if has_default:
-                        self._validate_recursive(actual_rules, default_val, current_path, errors)
+                        if mutate:
+                            data[key] = default_val
+                        self._validate_recursive(actual_rules, default_val, current_path, errors, mutate)
                     elif not is_optional:
                         # Check if the field is missing from the 'required' list if 'required' is defined
                         required_list = schema.get("required")
@@ -250,7 +253,7 @@ class SchemaValidator:
                         if not is_optional:
                             errors.append(f"Missing required field: {current_path}")
                 else:
-                    self._validate_recursive(actual_rules, data[key], current_path, errors)
+                    self._validate_recursive(actual_rules, data[key], current_path, errors, mutate)
 
             # Handle 'required' list for fields NOT explicitly listed in defined_fields
             required_list = schema.get("required")
@@ -276,7 +279,7 @@ class SchemaValidator:
             elif isinstance(additional_properties, (str, dict)):
                 for key in data:
                     if key not in defined_fields:
-                        self._validate_recursive(additional_properties, data[key], f"{path}.{key}", errors)
+                        self._validate_recursive(additional_properties, data[key], f"{path}.{key}", errors, mutate)
         
         else:
             errors.append(f"Unsupported schema definition at {path}")

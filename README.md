@@ -7,6 +7,7 @@ A lightweight, zero-dependency Python library to validate JSON-like dictionaries
 - Required field validation
 - Nested schema support
 - Custom error messages
+- Default value injection
 
 ## Usage
 
