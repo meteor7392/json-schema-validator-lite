@@ -102,6 +102,12 @@ class SchemaValidator:
                     errors.append(f"Value at {path} must NOT match the schema provided in 'not'")
                 return
 
+            # Constant value validation
+            if "const" in schema:
+                constant_val = schema["const"]
+                if data != constant_val:
+                    errors.append(f"Value at {path} must be exactly {repr(constant_val)}, got {repr(data)}")
+
             # Check if this is a constraint definition rather than a nested object
             if "type" in schema:
                 type_name = schema["type"]
@@ -221,7 +227,7 @@ class SchemaValidator:
             defined_fields = set()
             # Fields defined directly in the schema
             for key in schema:
-                if key in ("additionalProperties", "dependencies", "required", "properties", "type", "min", "max", "min_properties", "max_properties", "minProperties", "maxProperties"):
+                if key in ("additionalProperties", "dependencies", "required", "properties", "type", "min", "max", "min_properties", "max_properties", "minProperties", "maxProperties", "const"):
                     continue
                 defined_fields.add(key)
             # Fields defined in the 'properties' keyword
