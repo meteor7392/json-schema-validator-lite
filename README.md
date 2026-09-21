@@ -8,6 +8,10 @@ A lightweight, zero-dependency Python library to validate JSON-like dictionaries
 - Nested schema support
 - Custom error messages
 - Default value injection
+- Numeric constraints (min, max, exclusiveMinimum, exclusiveMaximum, multipleOf)
+- String constraints (minLength, maxLength, pattern)
+- List/Dict size constraints
+- Composition (anyOf, allOf, oneOf, not)
 
 ## Usage
 

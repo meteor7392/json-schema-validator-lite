@@ -331,5 +331,17 @@ class TestSchemaValidator(unittest.TestCase):
         self.assertTrue(is_valid_m)
         self.assertEqual(data["role"], "user")
 
+    def test_multiple_of(self):
+        schema = {
+            "value": {"type": "integer", "multipleOf": 5}
+        }
+        # Valid
+        self.assertTrue(SchemaValidator(schema).validate({"value": 15})[0])
+        self.assertTrue(SchemaValidator(schema).validate({"value": 0})[0])
+        # Invalid
+        v1 = SchemaValidator(schema).validate({"value": 7})
+        self.assertFalse(v1[0])
+        self.assertIn("Value at root.value must be a multiple of 5", v1[1])
+
 if __name__ == "__main__":
     unittest.main()
