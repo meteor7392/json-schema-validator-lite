@@ -343,5 +343,38 @@ class TestSchemaValidator(unittest.TestCase):
         self.assertFalse(v1[0])
         self.assertIn("Value at root.value must be a multiple of 5", v1[1])
 
+    def test_pattern_properties(self):
+        schema = {
+            "properties": {
+                "name": "string"
+            },
+            "patternProperties": {
+                "^attr_": "integer"
+            },
+            "additionalProperties": False
+        }
+        # Valid: defined property and matching pattern property
+        self.assertTrue(SchemaValidator(schema).validate({
+            "name": "Bob",
+            "attr_1": 10,
+            "attr_2": 20
+        })[0])
+        
+        # Invalid: pattern property with wrong type
+        v1 = SchemaValidator(schema).validate({
+            "name": "Bob",
+            "attr_1": "not-an-int"
+        })
+        self.assertFalse(v1[0])
+        self.assertIn("Expected integer at root.attr_1, got str", v1[1])
+        
+        # Invalid: property that matches neither defined nor pattern
+        v2 = SchemaValidator(schema).validate({
+            "name": "Bob",
+            "other": 123
+        })
+        self.assertFalse(v2[0])
+        self.assertIn("Additional property other not allowed at root", v2[1])
+
 if __name__ == "__main__":
     unittest.main()

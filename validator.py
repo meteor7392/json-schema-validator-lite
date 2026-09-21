@@ -294,33 +294,24 @@ class SchemaValidator:
                                 errors.append(f"Missing required field: {current_path}")
 
             # Validate additional fields
-            if additional_properties is False:
-                for key in data:
-                    if key not in defined_fields:
-                        # Check if it matches any patternProperties
-                        matched_pattern = False
-                        pattern_props = schema.get("patternProperties", {})
-                        if isinstance(pattern_props, dict):
-                            for pattern, p_schema in pattern_props.items():
-                                if re.search(pattern, key):
-                                    self._validate_recursive(p_schema, data[key], f"{path}.{key}", errors, mutate)
-                                    matched_pattern = True
-                        
-                        if not matched_pattern:
+            pattern_props = schema.get("patternProperties", {})
+            if not isinstance(pattern_props, dict):
+                pattern_props = {}
+
+            for key in data:
+                if key not in defined_fields:
+                    # Check if it matches any patternProperties
+                    matched_pattern = False
+                    for pattern, p_schema in pattern_props.items():
+                        if re.search(pattern, key):
+                            self._validate_recursive(p_schema, data[key], f"{path}.{key}", errors, mutate)
+                            matched_pattern = True
+                    
+                    if not matched_pattern:
+                        if additional_properties is False:
                             errors.append(f"Additional property {key} not allowed at {path}")
-            elif isinstance(additional_properties, (str, dict)):
-                for key in data:
-                    if key not in defined_fields:
-                        self._validate_recursive(additional_properties, data[key], f"{path}.{key}", errors, mutate)
-            else:
-                # additionalProperties is True (default), but we still check patternProperties
-                pattern_props = schema.get("patternProperties", {})
-                if isinstance(pattern_props, dict):
-                    for key in data:
-                        if key not in defined_fields:
-                            for pattern, p_schema in pattern_props.items():
-                                if re.search(pattern, key):
-                                    self._validate_recursive(p_schema, data[key], f"{path}.{key}", errors, mutate)
+                        elif isinstance(additional_properties, (str, dict)):
+                            self._validate_recursive(additional_properties, data[key], f"{path}.{key}", errors, mutate)
         
         else:
             errors.append(f"Unsupported schema definition at {path}")
