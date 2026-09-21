@@ -143,13 +143,15 @@ class SchemaValidator:
                 # Item and size validation for lists
                 elif isinstance(data, list):
                     length = len(data)
-                    if "min_items" in schema and length < schema["min_items"]:
-                        errors.append(f"List at {path} is too short (min_items: {schema['min_items']})")
+                    min_items = schema.get("min_items") if "min_items" in schema else schema.get("minItems")
+                    if min_items is not None and length < min_items:
+                        errors.append(f"List at {path} is too short (min_items: {min_items})")
                     elif "min" in schema and length < schema["min"]:
                         errors.append(f"List at {path} is too short (min: {schema['min']})")
                     
-                    if "max_items" in schema and length > schema["max_items"]:
-                        errors.append(f"List at {path} is too long (max_items: {schema['max_items']})")
+                    max_items = schema.get("max_items") if "max_items" in schema else schema.get("maxItems")
+                    if max_items is not None and length > max_items:
+                        errors.append(f"List at {path} is too long (max_items: {max_items})")
                     elif "max" in schema and length > schema["max"]:
                         errors.append(f"List at {path} is too long (max: {schema['max']})")
                     
@@ -161,13 +163,15 @@ class SchemaValidator:
                 # Size validation for dicts
                 elif isinstance(data, dict):
                     length = len(data)
-                    if "min_properties" in schema and length < schema["min_properties"]:
-                        errors.append(f"Dict at {path} has too few properties (min_properties: {schema['min_properties']})")
+                    min_props = schema.get("min_properties") if "min_properties" in schema else schema.get("minProperties")
+                    if min_props is not None and length < min_props:
+                        errors.append(f"Dict at {path} has too few properties (min_properties: {min_props})")
                     elif "min" in schema and length < schema["min"]:
                         errors.append(f"Dict at {path} has too few properties (min: {schema['min']})")
                     
-                    if "max_properties" in schema and length > schema["max_properties"]:
-                        errors.append(f"Dict at {path} has too many properties (max_properties: {schema['max_properties']})")
+                    max_props = schema.get("max_properties") if "max_properties" in schema else schema.get("maxProperties")
+                    if max_props is not None and length > max_props:
+                        errors.append(f"Dict at {path} has too many properties (max_properties: {max_props})")
                     elif "max" in schema and length > schema["max"]:
                         errors.append(f"Dict at {path} has too many properties (max: {schema['max']})")
                 
@@ -213,7 +217,7 @@ class SchemaValidator:
             defined_fields = set()
             # Fields defined directly in the schema
             for key in schema:
-                if key in ("additionalProperties", "dependencies", "required", "properties", "type", "min", "max", "min_properties", "max_properties"):
+                if key in ("additionalProperties", "dependencies", "required", "properties", "type", "min", "max", "min_properties", "max_properties", "minProperties", "maxProperties"):
                     continue
                 defined_fields.add(key)
             # Fields defined in the 'properties' keyword
