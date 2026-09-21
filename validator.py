@@ -123,13 +123,15 @@ class SchemaValidator:
                 # Length and pattern validation for strings
                 elif isinstance(data, str):
                     length = len(data)
-                    if "min_length" in schema and length < schema["min_length"]:
-                        errors.append(f"String at {path} is too short (min_length: {schema['min_length']})")
+                    min_len = schema.get("min_length") if "min_length" in schema else schema.get("minLength")
+                    if min_len is not None and length < min_len:
+                        errors.append(f"String at {path} is too short (min_length: {min_len})")
                     elif "min" in schema and length < schema["min"]:
                         errors.append(f"String at {path} is too short (min: {schema['min']})")
                     
-                    if "max_length" in schema and length > schema["max_length"]:
-                        errors.append(f"String at {path} is too long (max_length: {schema['max_length']})")
+                    max_len = schema.get("max_length") if "max_length" in schema else schema.get("maxLength")
+                    if max_len is not None and length > max_len:
+                        errors.append(f"String at {path} is too long (max_length: {max_len})")
                     elif "max" in schema and length > schema["max"]:
                         errors.append(f"String at {path} is too long (max: {schema['max']})")
                     
