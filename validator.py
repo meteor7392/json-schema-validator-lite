@@ -113,6 +113,12 @@ class SchemaValidator:
                         errors.append(f"Value at {path} is too small (min: {schema['min']})")
                     if "max" in schema and data > schema["max"]:
                         errors.append(f"Value at {path} is too large (max: {schema['max']})")
+                    if "multipleOf" in schema:
+                        multiple = schema["multipleOf"]
+                        if multiple == 0:
+                            errors.append(f"Invalid schema definition: 'multipleOf' cannot be 0 at {path}")
+                        elif data % multiple != 0:
+                            errors.append(f"Value at {path} must be a multiple of {multiple}")
                 
                 # Length and pattern validation for strings
                 elif isinstance(data, str):
