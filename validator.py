@@ -167,8 +167,15 @@ class SchemaValidator:
                     
                     if "items" in schema:
                         item_schema = schema["items"]
-                        for i, item in enumerate(data):
-                            self._validate_recursive(item_schema, item, f"{path}[{i}]", errors, mutate)
+                        if isinstance(item_schema, list):
+                            # Tuple validation: each item in the list is a schema for the corresponding element
+                            for i, item in enumerate(data):
+                                if i < len(item_schema):
+                                    self._validate_recursive(item_schema[i], item, f"{path}[{i}]", errors, mutate)
+                        else:
+                            # Uniform validation: all items match the same schema
+                            for i, item in enumerate(data):
+                                self._validate_recursive(item_schema, item, f"{path}[{i}]", errors, mutate)
                 
                 # Size validation for dicts
                 elif isinstance(data, dict):
