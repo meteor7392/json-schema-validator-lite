@@ -376,5 +376,21 @@ class TestSchemaValidator(unittest.TestCase):
         self.assertFalse(v2[0])
         self.assertIn("Additional property other not allowed at root", v2[1])
 
+    def test_const_validation(self):
+        schema = {
+            "version": {"const": "1.0.0"},
+            "type": {"const": 1}
+        }
+        # Valid
+        self.assertTrue(SchemaValidator(schema).validate({"version": "1.0.0", "type": 1})[0])
+        # Invalid string
+        v1 = SchemaValidator(schema).validate({"version": "2.0.0", "type": 1})
+        self.assertFalse(v1[0])
+        self.assertIn("Value at root.version must be exactly '1.0.0', got '2.0.0'", v1[1])
+        # Invalid int
+        v2 = SchemaValidator(schema).validate({"version": "1.0.0", "type": 2})
+        self.assertFalse(v2[0])
+        self.assertIn("Value at root.type must be exactly 1, got 2", v2[1])
+
 if __name__ == "__main__":
     unittest.main()
