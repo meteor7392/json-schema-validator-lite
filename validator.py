@@ -165,6 +165,19 @@ class SchemaValidator:
                     elif "max" in schema and length > schema["max"]:
                         errors.append(f"List at {path} is too long (max: {schema['max']})")
                     
+                    if schema.get("uniqueItems") is True:
+                        try:
+                            if len(set(data)) != length:
+                                errors.append(f"List at {path} contains duplicate items")
+                        except TypeError:
+                            # For unhashable types (like dicts in lists), manual check
+                            seen = []
+                            for item in data:
+                                if item in seen:
+                                    errors.append(f"List at {path} contains duplicate items")
+                                    break
+                                seen.append(item)
+
                     if "items" in schema:
                         item_schema = schema["items"]
                         if isinstance(item_schema, list):
