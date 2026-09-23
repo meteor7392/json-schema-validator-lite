@@ -119,10 +119,15 @@ class SchemaValidator:
                         errors.append(f"Value at {path} is too small (min: {schema['min']})")
                     if "max" in schema and data > schema["max"]:
                         errors.append(f"Value at {path} is too large (max: {schema['max']})")
-                    if "exclusiveMinimum" in schema and data <= schema["exclusiveMinimum"]:
-                        errors.append(f"Value at {path} must be strictly greater than {schema['exclusiveMinimum']}")
-                    if "exclusiveMaximum" in schema and data >= schema["exclusiveMaximum"]:
-                        errors.append(f"Value at {path} must be strictly less than {schema['exclusiveMaximum']}")
+                    
+                    ex_min = schema.get("exclusiveMinimum") if "exclusiveMinimum" in schema else schema.get("minExclusive")
+                    if ex_min is not None and data <= ex_min:
+                        errors.append(f"Value at {path} must be strictly greater than {ex_min}")
+                    
+                    ex_max = schema.get("exclusiveMaximum") if "exclusiveMaximum" in schema else schema.get("maxExclusive")
+                    if ex_max is not None and data >= ex_max:
+                        errors.append(f"Value at {path} must be strictly less than {ex_max}")
+                    
                     if "multipleOf" in schema:
                         multiple = schema["multipleOf"]
                         if multiple == 0:
