@@ -181,7 +181,7 @@ class SchemaValidator:
                                 if item in seen:
                                     errors.append(f"List at {path} contains duplicate items")
                                     break
-                                seen.append(item)
+                            seen.append(item)
 
                     if "items" in schema:
                         item_schema = schema["items"]
@@ -312,6 +312,13 @@ class SchemaValidator:
                         prop_rules = properties_schema.get(req_field) if req_field in properties_schema else schema.get(req_field)
                         if isinstance(prop_rules, dict) and "default" in prop_rules:
                             has_default = True
+                            # Inject default if mutate is enabled
+                            if mutate:
+                                data[req_field] = prop_rules["default"]
+                            
+                            # Validate the default value
+                            actual_prop_rules = prop_rules.get("optional", prop_rules) if "optional" in prop_rules else prop_rules
+                            self._validate_recursive(actual_prop_rules, prop_rules["default"], f"{path}.{req_field}", errors, mutate)
                         
                         if not has_default:
                             current_path = f"{path}.{req_field}"
