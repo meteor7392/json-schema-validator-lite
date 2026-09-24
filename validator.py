@@ -273,6 +273,10 @@ class SchemaValidator:
         for key in properties_schema:
             defined_fields.add(key)
 
+        # First, handle missing fields and defaults
+        # We use a set of checked fields to avoid duplicate 'missing' errors
+        checked_fields = set()
+
         for key in defined_fields:
             current_path = f"{path}.{key}"
             rules = properties_schema.get(key) if key in properties_schema else schema.get(key)
@@ -297,6 +301,7 @@ class SchemaValidator:
                     if mutate:
                         data[key] = default_val
                     self._validate_recursive(actual_rules, default_val, current_path, errors, mutate)
+                    checked_fields.add(key)
                 elif not is_optional:
                     required_list = schema.get("required")
                     if required_list is not None:
@@ -307,26 +312,33 @@ class SchemaValidator:
                         
                         if not is_optional:
                             errors.append(f"Missing required field: {current_path}")
+                            checked_fields.add(key)
+                    else:
+                        # By default, defined fields are required unless marked optional
+                        errors.append(f"Missing required field: {current_path}")
+                        checked_fields.add(key)
             else:
                 self._validate_recursive(actual_rules, data[key], current_path, errors, mutate)
+                checked_fields.add(key)
 
+        # Ensure all fields in 'required' list are handled
         required_list = schema.get("required")
         if isinstance(required_list, list):
             for req_field in required_list:
-                if req_field not in data:
-                    has_default = False
+                if req_field not in checked_fields:
+                    current_path = f"{path}.{req_field}"
                     prop_rules = properties_schema.get(req_field) if req_field in properties_schema else schema.get(req_field)
+                    
+                    has_default = False
                     if isinstance(prop_rules, dict) and "default" in prop_rules:
                         has_default = True
                         if mutate:
                             data[req_field] = prop_rules["default"]
                         actual_prop_rules = prop_rules.get("optional", prop_rules) if "optional" in prop_rules else prop_rules
-                        self._validate_recursive(actual_prop_rules, prop_rules["default"], f"{path}.{req_field}", errors, mutate)
+                        self._validate_recursive(actual_prop_rules, prop_rules["default"], current_path, errors, mutate)
                     
                     if not has_default:
-                        current_path = f"{path}.{req_field}"
-                        if not any(current_path in err for err in errors):
-                            errors.append(f"Missing required field: {current_path}")
+                        errors.append(f"Missing required field: {current_path}")
 
         pattern_props = schema.get("patternProperties", {})
         if not isinstance(pattern_props, dict):
