@@ -231,14 +231,18 @@ class SchemaValidator:
                 if not isinstance(deps, dict):
                     errors.append(f"Invalid schema definition: 'dependencies' must be a dict at {path}")
                 else:
-                    for key, required_fields in deps.items():
+                    for key, dependency in deps.items():
                         if key in data:
-                            if not isinstance(required_fields, list):
-                                errors.append(f"Invalid schema definition: dependencies for {key} must be a list at {path}")
-                                continue
-                            for field in required_fields:
-                                if field not in data:
-                                    errors.append(f"Field {path}.{field} is required because {path}.{key} is present")
+                            if isinstance(dependency, list):
+                                # Property dependencies: list of required fields
+                                for field in dependency:
+                                    if field not in data:
+                                        errors.append(f"Field {path}.{field} is required because {path}.{key} is present")
+                            elif isinstance(dependency, dict):
+                                # Schema dependencies: validate current object against the provided schema
+                                self._validate_recursive(dependency, data, path, errors, mutate)
+                            else:
+                                errors.append(f"Invalid schema definition: dependency for {key} must be a list or a dict at {path}")
 
             # Check for additionalProperties
             additional_properties = schema.get("additionalProperties", True)
