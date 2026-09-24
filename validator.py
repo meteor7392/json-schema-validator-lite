@@ -181,7 +181,7 @@ class SchemaValidator:
                                 if item in seen:
                                     errors.append(f"List at {path} contains duplicate items")
                                     break
-                            seen.append(item)
+                                seen.append(item)
 
                     if "items" in schema:
                         item_schema = schema["items"]
