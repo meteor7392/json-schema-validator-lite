@@ -111,6 +111,22 @@ class SchemaValidator:
             # Check if this is a constraint definition rather than a nested object
             if "type" in schema:
                 type_name = schema["type"]
+                
+                # Handle nullable
+                if data is None:
+                    if schema.get("nullable") is True:
+                        # Data is null and schema allows it, skip type and range checks
+                        if "enum" in schema:
+                            allowed_values = schema["enum"]
+                            if not isinstance(allowed_values, list):
+                                errors.append(f"Invalid schema definition: 'enum' must be a list at {path}")
+                            elif data not in allowed_values:
+                                errors.append(f"Value at {path} must be one of {allowed_values}, got {repr(data)}")
+                        return
+                    else:
+                        errors.append(f"Value at {path} cannot be null")
+                        return
+
                 self._check_type(type_name, data, path, errors)
                 
                 # Range validation for numbers
@@ -256,7 +272,7 @@ class SchemaValidator:
             defined_fields = set()
             # Fields defined directly in the schema
             for key in schema:
-                if key in ("additionalProperties", "dependencies", "required", "properties", "type", "min", "max", "min_properties", "max_properties", "minProperties", "maxProperties", "const", "patternProperties"):
+                if key in ("additionalProperties", "dependencies", "required", "properties", "type", "min", "max", "min_properties", "max_properties", "minProperties", "maxProperties", "const", "patternProperties", "nullable"):
                     continue
                 defined_fields.add(key)
             # Fields defined in the 'properties' keyword
