@@ -187,17 +187,12 @@ class SchemaValidator:
                         errors.append(f"List at {path} is too long (max: {schema['max']})")
                     
                     if schema.get("uniqueItems") is True:
-                        try:
-                            if len(set(data)) != length:
+                        seen = []
+                        for item in data:
+                            if item in seen:
                                 errors.append(f"List at {path} contains duplicate items")
-                        except TypeError:
-                            # For unhashable types (like dicts in lists), manual check
-                            seen = []
-                            for item in data:
-                                if item in seen:
-                                    errors.append(f"List at {path} contains duplicate items")
-                                    break
-                                seen.append(item)
+                                break
+                            seen.append(item)
 
                     if "items" in schema:
                         item_schema = schema["items"]
@@ -206,6 +201,10 @@ class SchemaValidator:
                             for i, item in enumerate(data):
                                 if i < len(item_schema):
                                     self._validate_recursive(item_schema[i], item, f"{path}[{i}]", errors, mutate)
+                                else:
+                                    # Handle additional items in tuple if defined, otherwise valid but unchecked
+                                    # Standard JSON schema uses 'additionalItems'. We support basic tuple length mapping.
+                                    pass
                         else:
                             # Uniform validation: all items match the same schema
                             for i, item in enumerate(data):
