@@ -62,7 +62,7 @@ class TestSchemaValidator(unittest.TestCase):
         # Too high
         v2 = SchemaValidator(schema).validate({"score": 101})
         self.assertFalse(v2[0])
-        self.assertIn("Value at root.score is too large (max: 100)", v2[1])
+        self.assertIn("Value at root.score is too large (max: 100)", v1[1])
         
         # Valid
         v3 = SchemaValidator(schema).validate({"score": 50})
@@ -391,6 +391,25 @@ class TestSchemaValidator(unittest.TestCase):
         v2 = SchemaValidator(schema).validate({"version": "1.0.0", "type": 2})
         self.assertFalse(v2[0])
         self.assertIn("Value at root.type must be exactly 1, got 2", v2[1])
+
+    def test_exclusive_constraints(self):
+        # Test exclusiveMinimum / minExclusive
+        schema_min = {"val": {"type": "integer", "exclusiveMinimum": 5}}
+        self.assertTrue(SchemaValidator(schema_min).validate({"val": 6})[0])
+        self.assertFalse(SchemaValidator(schema_min).validate({"val": 5})[0])
+        
+        schema_min_alias = {"val": {"type": "integer", "minExclusive": 5}}
+        self.assertTrue(SchemaValidator(schema_min_alias).validate({"val": 6})[0])
+        self.assertFalse(SchemaValidator(schema_min_alias).validate({"val": 5})[0])
+
+        # Test exclusiveMaximum / maxExclusive
+        schema_max = {"val": {"type": "integer", "exclusiveMaximum": 10}}
+        self.assertTrue(SchemaValidator(schema_max).validate({"val": 9})[0])
+        self.assertFalse(SchemaValidator(schema_max).validate({"val": 10})[0])
+        
+        schema_max_alias = {"val": {"type": "integer", "maxExclusive": 10}}
+        self.assertTrue(SchemaValidator(schema_max_alias).validate({"val": 9})[0])
+        self.assertFalse(SchemaValidator(schema_max_alias).validate({"val": 10})[0])
 
 if __name__ == "__main__":
     unittest.main()
