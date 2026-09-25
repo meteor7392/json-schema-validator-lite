@@ -71,15 +71,17 @@ class SchemaValidator:
                 return
             
             any_valid = False
-            for opt_schema in options:
+            all_options_errors = []
+            for i, opt_schema in enumerate(options):
                 opt_errors = []
                 self._validate_recursive(opt_schema, data, path, opt_errors, mutate)
                 if not opt_errors:
                     any_valid = True
                     break
+                all_options_errors.append(f"Option {i}: {'; '.join(opt_errors)}")
             
             if not any_valid:
-                errors.append(f"Value at {path} does not match any of the required schemas in anyOf")
+                errors.append(f"Value at {path} does not match any of the required schemas in anyOf. Errors: [{ ' | '.join(all_options_errors) }]")
             return
 
         # Composition: allOf
@@ -101,14 +103,20 @@ class SchemaValidator:
                 return
             
             valid_count = 0
-            for opt_schema in options:
+            all_options_errors = []
+            for i, opt_schema in enumerate(options):
                 opt_errors = []
                 self._validate_recursive(opt_schema, data, path, opt_errors, mutate)
                 if not opt_errors:
                     valid_count += 1
+                else:
+                    all_options_errors.append(f"Option {i}: {'; '.join(opt_errors)}")
             
             if valid_count != 1:
-                errors.append(f"Value at {path} must match exactly one schema in oneOf (matched {valid_count})")
+                err_msg = f"Value at {path} must match exactly one schema in oneOf (matched {valid_count})"
+                if valid_count == 0:
+                    err_msg += f". Errors: [{ ' | '.join(all_options_errors) }]"
+                errors.append(err_msg)
             return
 
         # Negation: not
