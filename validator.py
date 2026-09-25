@@ -288,11 +288,13 @@ class SchemaValidator:
             properties_schema = {}
 
         defined_fields = set()
+        # We consider fields explicitly defined in 'properties' and fields defined implicitly at root level
+        for key in properties_schema:
+            defined_fields.add(key)
+        
         for key in schema:
             if key in ("additionalProperties", "dependencies", "required", "properties", "type", "min", "max", "min_properties", "max_properties", "minProperties", "maxProperties", "const", "patternProperties", "nullable", "description"):
                 continue
-            defined_fields.add(key)
-        for key in properties_schema:
             defined_fields.add(key)
 
         # First, handle missing fields and defaults
@@ -300,6 +302,7 @@ class SchemaValidator:
 
         for key in defined_fields:
             current_path = f"{path}.{key}"
+            # Prioritize properties_schema over root schema
             rules = properties_schema.get(key) if key in properties_schema else schema.get(key)
             
             is_optional = False
