@@ -136,14 +136,28 @@ class SchemaValidator:
 
         # Check if this is a constraint definition
         if "type" in schema:
-            type_name = schema["type"]
+            type_def = schema["type"]
             
             if data is None:
                 # We already handled nullable at the start of _validate_recursive
                 errors.append(f"Value at {path} cannot be null")
                 return
 
-            self._check_type(type_name, data, path, errors)
+            if isinstance(type_def, list):
+                valid_type = False
+                for t in type_def:
+                    temp_errors = []
+                    self._check_type(t, data, path, temp_errors)
+                    if not temp_errors:
+                        valid_type = True
+                        break
+                if not valid_type:
+                    errors.append(f"Expected one of {type_def} at {path}, got {type(data).__name__}")
+            elif isinstance(type_def, str):
+                self._check_type(type_def, data, path, errors)
+            else:
+                errors.append(f"Invalid schema definition: 'type' must be a string or list of strings at {path}")
+                return
             
             # Range validation for numbers
             if isinstance(data, (int, float)):

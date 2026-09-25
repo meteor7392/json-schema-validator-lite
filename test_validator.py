@@ -62,7 +62,7 @@ class TestSchemaValidator(unittest.TestCase):
         # Too high
         v2 = SchemaValidator(schema).validate({"score": 101})
         self.assertFalse(v2[0])
-        self.assertIn("Value at root.score is too large (max: 100)", v1[1])
+        self.assertIn("Value at root.score is too large (max: 100)", v2[1])
         
         # Valid
         v3 = SchemaValidator(schema).validate({"score": 50})
@@ -410,6 +410,25 @@ class TestSchemaValidator(unittest.TestCase):
         schema_max_alias = {"val": {"type": "integer", "maxExclusive": 10}}
         self.assertTrue(SchemaValidator(schema_max_alias).validate({"val": 9})[0])
         self.assertFalse(SchemaValidator(schema_max_alias).validate({"val": 10})[0])
+
+    def test_type_array(self):
+        schema = {"id": {"type": ["string", "integer"]}}
+        # Valid cases
+        self.assertTrue(SchemaValidator(schema).validate({"id": "abc"})[0])
+        self.assertTrue(SchemaValidator(schema).validate({"id": 123})[0])
+        # Invalid case
+        v1 = SchemaValidator(schema).validate({"id": 12.3})
+        self.assertFalse(v1[0])
+        self.assertIn("Expected one of ['string', 'integer'] at root.id, got float", v1[1])
+
+    def test_uniqueItems_complex(self):
+        schema = {"list": {"type": "list", "uniqueItems": True}}
+        # Valid: distinct complex items
+        self.assertTrue(SchemaValidator(schema).validate({"list": [{"a": 1}, {"a": 2}]})[0])
+        # Invalid: duplicate complex items
+        v1 = SchemaValidator(schema).validate({"list": [{"a": 1}, {"a": 1}]})
+        self.assertFalse(v1[0])
+        self.assertIn("List at root.list contains duplicate items", v1[1])
 
 if __name__ == "__main__":
     unittest.main()
