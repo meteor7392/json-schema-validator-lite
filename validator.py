@@ -40,6 +40,53 @@ class SchemaValidator:
         self._validate_recursive(self.schema, data, "root", errors, mutate)
         return len(errors) == 0, errors
 
+    def get_descriptions(self) -> Dict[str, str]:
+        """
+        Extracts all 'description' fields from the schema.
+        Returns a dictionary mapping paths to descriptions.
+        """
+        descriptions = {}
+        self._extract_descriptions(self.schema, "root", descriptions)
+        return descriptions
+
+    def _extract_descriptions(self, schema: Any, path: str, descriptions: Dict[str, str]):
+        if not isinstance(schema, dict):
+            return
+
+        if "description" in schema:
+            descriptions[path] = schema["description"]
+
+        # Recurse into properties
+        properties = schema.get("properties", {})
+        if isinstance(properties, dict):
+            for key, sub_schema in properties.items():
+                self._extract_descriptions(sub_schema, f"{path}.{key}", descriptions)
+
+        # Recurse into implicit schema fields (not in 'properties' but at root)
+        for key, value in schema.items():
+            if key in ("additionalProperties", "dependencies", "required", "properties", "type", "min", "max", "min_properties", "max_properties", "minProperties", "maxProperties", "const", "patternProperties", "nullable", "description"):
+                continue
+            if isinstance(value, dict):
+                self._extract_descriptions(value, f"{path}.{key}", descriptions)
+
+        # Recurse into composition
+        for comp in ("anyOf", "allOf", "oneOf"):
+            options = schema.get(comp)
+            if isinstance(options, list):
+                for i, opt_schema in enumerate(options):
+                    self._extract_descriptions(opt_schema, f"{path}.{comp}[{i}]", descriptions)
+
+        if "not" in schema:
+            self._extract_descriptions(schema["not"], f"{path}.not", descriptions)
+
+        # Recurse into list items
+        items = schema.get("items")
+        if isinstance(items, dict):
+            self._extract_descriptions(items, f"{path}.items", descriptions)
+        elif isinstance(items, list):
+            for i, item_schema in enumerate(items):
+                self._extract_descriptions(item_schema, f"{path}.items[{i}]", descriptions)
+
     def _validate_recursive(self, schema: Any, data: Any, path: str, errors: List[str], mutate: bool = False):
         if isinstance(schema, str):
             self._check_type(schema, data, path, errors)
