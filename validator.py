@@ -296,7 +296,6 @@ class SchemaValidator:
             defined_fields.add(key)
 
         # First, handle missing fields and defaults
-        # We use a set of checked fields to avoid duplicate 'missing' errors
         checked_fields = set()
 
         for key in defined_fields:
@@ -336,7 +335,6 @@ class SchemaValidator:
                             errors.append(f"Missing required field: {current_path}")
                             checked_fields.add(key)
                     else:
-                        # By default, defined fields are required unless marked optional
                         errors.append(f"Missing required field: {current_path}")
                         checked_fields.add(key)
             else:
