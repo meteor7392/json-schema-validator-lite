@@ -205,7 +205,7 @@ class SchemaValidator:
                 if schema.get("uniqueItems") is True:
                     seen = []
                     for item in data:
-                        if item in seen:
+                        if any(item == existing for existing in seen):
                             errors.append(f"List at {path} contains duplicate items")
                             break
                         seen.append(item)
@@ -275,7 +275,7 @@ class SchemaValidator:
 
         defined_fields = set()
         for key in schema:
-            if key in ("additionalProperties", "dependencies", "required", "properties", "type", "min", "max", "min_properties", "max_properties", "minProperties", "maxProperties", "const", "patternProperties", "nullable"):
+            if key in ("additionalProperties", "dependencies", "required", "properties", "type", "min", "max", "min_properties", "max_properties", "minProperties", "maxProperties", "const", "patternProperties", "nullable", "description"):
                 continue
             defined_fields.add(key)
         for key in properties_schema:
