@@ -341,7 +341,7 @@ class SchemaValidator:
                 self._validate_recursive(actual_rules, data[key], current_path, errors, mutate)
                 checked_fields.add(key)
 
-        # Ensure all fields in 'required' list are handled
+        # Ensure all fields in 'required' list are handled (avoid duplicates)
         required_list = schema.get("required")
         if isinstance(required_list, list):
             for req_field in required_list:
