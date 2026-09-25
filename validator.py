@@ -49,9 +49,9 @@ class SchemaValidator:
             errors.append(f"Unsupported schema definition at {path}")
             return
 
-        # Handle nullable: if data is None and nullable is True, it's valid regardless of other constraints
-        # unless specifically constrained by 'const' or 'enum'.
+        # Handle nullable: if data is None and nullable is True, it's valid
         if data is None and schema.get("nullable") is True:
+            # Still check const and enum if present, as they can constrain nullable fields
             if "const" in schema:
                 if schema["const"] is not None:
                     errors.append(f"Value at {path} must be exactly {repr(schema['const'])}, got None")
@@ -139,7 +139,7 @@ class SchemaValidator:
             type_def = schema["type"]
             
             if data is None:
-                # We already handled nullable at the start of _validate_recursive
+                # nullable is handled at the start of _validate_recursive
                 errors.append(f"Value at {path} cannot be null")
                 return
 
