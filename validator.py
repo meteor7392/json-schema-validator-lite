@@ -64,7 +64,7 @@ class SchemaValidator:
 
         # Recurse into implicit schema fields (not in 'properties' but at root)
         for key, value in schema.items():
-            if key in ("additionalProperties", "dependencies", "required", "properties", "type", "min", "max", "min_properties", "max_properties", "minProperties", "maxProperties", "const", "patternProperties", "nullable", "description"):
+            if key in ("additionalProperties", "dependencies", "required", "properties", "type", "min", "max", "min_properties", "max_properties", "minProperties", "maxProperties", "const", "patternProperties", "nullable", "description", "examples"):
                 continue
             if isinstance(value, dict):
                 self._extract_descriptions(value, f"{path}.{key}", descriptions)
@@ -128,6 +128,8 @@ class SchemaValidator:
                 all_options_errors.append(f"Option {i}: {'; '.join(opt_errors)}")
             
             if not any_valid:
+                # If the overall schema is nullable and data is None, this composition failure should be ignored 
+                # if we already handled it. But we check nullability inside each opt_schema via the recursive call.
                 errors.append(f"Value at {path} does not match any of the required schemas in anyOf. Errors: [{ ' | '.join(all_options_errors) }]")
             return
 
@@ -341,7 +343,7 @@ class SchemaValidator:
             defined_fields.add(key)
         
         for key in schema:
-            if key in ("additionalProperties", "dependencies", "required", "properties", "type", "min", "max", "min_properties", "max_properties", "minProperties", "maxProperties", "const", "patternProperties", "nullable", "description"):
+            if key in ("additionalProperties", "dependencies", "required", "properties", "type", "min", "max", "min_properties", "max_properties", "minProperties", "maxProperties", "const", "patternProperties", "nullable", "description", "examples"):
                 continue
             defined_fields.add(key)
 
