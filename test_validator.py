@@ -87,6 +87,25 @@ class TestSchemaValidator(unittest.TestCase):
         v3 = SchemaValidator(schema).validate({"username": "bob"})
         self.assertTrue(v3[0])
 
+    def test_string_constraints_camel_case(self):
+        schema = {
+            "username": {"type": "string", "minLength": 3, "maxLength": 10}
+        }
+        
+        # Too short
+        v1 = SchemaValidator(schema).validate({"username": "ab"})
+        self.assertFalse(v1[0])
+        self.assertIn("String at root.username is too short (min_length: 3)", v1[1])
+        
+        # Too long
+        v2 = SchemaValidator(schema).validate({"username": "verylongusername"})
+        self.assertFalse(v2[0])
+        self.assertIn("String at root.username is too long (max_length: 10)", v2[1])
+        
+        # Valid
+        v3 = SchemaValidator(schema).validate({"username": "bob"})
+        self.assertTrue(v3[0])
+
     def test_string_pattern(self):
         schema = {
             "email": {"type": "string", "pattern": r"^\S+@\S+\.\S+$"}
