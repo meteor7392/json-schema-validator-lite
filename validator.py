@@ -64,7 +64,7 @@ class SchemaValidator:
 
         # Recurse into implicit schema fields (not in 'properties' but at root)
         for key, value in schema.items():
-            if key in ("additionalProperties", "dependencies", "required", "properties", "type", "min", "max", "min_properties", "max_properties", "minProperties", "maxProperties", "const", "patternProperties", "nullable", "description", "examples"):
+            if key in ("additionalProperties", "dependencies", "required", "properties", "type", "min", "max", "min_properties", "max_properties", "minProperties", "maxProperties", "const", "patternProperties", "nullable", "description", "examples", "readOnly", "writeOnly"):
                 continue
             if isinstance(value, dict):
                 self._extract_descriptions(value, f"{path}.{key}", descriptions)
@@ -186,11 +186,6 @@ class SchemaValidator:
             examples = schema["examples"]
             if not isinstance(examples, list):
                 errors.append(f"Invalid schema definition: 'examples' must be a list at {path}")
-            # Note: In JSON Schema, 'examples' is primarily informative. 
-            # Here we treat it as a hint. If data is provided but does not match any example 
-            # and is already invalid, we could add it, but typically it's not for strict validation.
-            # However, if we want to support a 'must_match_example' mode, we would implement it here.
-            # For this lite version, we'll keep 'examples' as metadata unless specified otherwise.
 
         # Check if this is a constraint definition
         if "type" in schema:
@@ -352,7 +347,7 @@ class SchemaValidator:
             defined_fields.add(key)
         
         for key in schema:
-            if key in ("additionalProperties", "dependencies", "required", "properties", "type", "min", "max", "min_properties", "max_properties", "minProperties", "maxProperties", "const", "patternProperties", "nullable", "description", "examples"):
+            if key in ("additionalProperties", "dependencies", "required", "properties", "type", "min", "max", "min_properties", "max_properties", "minProperties", "maxProperties", "const", "patternProperties", "nullable", "description", "examples", "readOnly", "writeOnly"):
                 continue
             defined_fields.add(key)
 
