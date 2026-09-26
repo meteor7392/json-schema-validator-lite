@@ -128,8 +128,6 @@ class SchemaValidator:
                 all_options_errors.append(f"Option {i}: {'; '.join(opt_errors)}")
             
             if not any_valid:
-                # If the overall schema is nullable and data is None, this composition failure should be ignored 
-                # if we already handled it. But we check nullability inside each opt_schema via the recursive call.
                 errors.append(f"Value at {path} does not match any of the required schemas in anyOf. Errors: [{ ' | '.join(all_options_errors) }]")
             return
 
@@ -182,6 +180,17 @@ class SchemaValidator:
             constant_val = schema["const"]
             if data != constant_val:
                 errors.append(f"Value at {path} must be exactly {repr(constant_val)}, got {repr(data)}")
+
+        # Example validation (optional, only if examples list is provided)
+        if "examples" in schema:
+            examples = schema["examples"]
+            if not isinstance(examples, list):
+                errors.append(f"Invalid schema definition: 'examples' must be a list at {path}")
+            # Note: In JSON Schema, 'examples' is primarily informative. 
+            # Here we treat it as a hint. If data is provided but does not match any example 
+            # and is already invalid, we could add it, but typically it's not for strict validation.
+            # However, if we want to support a 'must_match_example' mode, we would implement it here.
+            # For this lite version, we'll keep 'examples' as metadata unless specified otherwise.
 
         # Check if this is a constraint definition
         if "type" in schema:
