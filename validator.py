@@ -298,7 +298,21 @@ class SchemaValidator:
                                 self._validate_recursive(item_schema[i], item, f"{path}[{i}]", errors, mutate, context)
                     else:
                         for i, item in enumerate(data):
-                            self._validate_recursive(item_schema, item, f"{path}[{i}]", errors, mutate, context)
+                            # Support for default values in items
+                            actual_item_schema = item_schema
+                            if isinstance(item_schema, dict) and "default" in item_schema:
+                                # In a real scenario, we might want to check if item is None or missing
+                                # but in a list, the item exists if the index is reached. 
+                                # However, if we allow 'nullable' items or the data is a list of holes,
+                                # we could apply defaults. For now, we treat 'default' as a fallback 
+                                # if the item is explicitly None and nullable is not true.
+                                if item is None and not (isinstance(item_schema, dict) and item_schema.get("nullable")):
+                                    if mutate:
+                                        data[i] = item_schema["default"]
+                                        item = data[i]
+                                    self._validate_recursive(item_schema, item, f"{path}[{i}]", errors, mutate, context)
+                                    continue
+                            self._validate_recursive(actual_item_schema, item, f"{path}[{i}]", errors, mutate, context)
             
             # Size validation for dicts
             elif isinstance(data, dict):
