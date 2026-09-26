@@ -30,14 +30,18 @@ class SchemaValidator:
     def __init__(self, schema: Dict[str, Any]):
         self.schema = schema
 
-    def validate(self, data: Any, mutate: bool = False) -> Tuple[bool, List[str]]:
+    def validate(self, data: Any, mutate: bool = False, context: str = "both") -> Tuple[bool, List[str]]:
         """
         Validates the provided data against the schema.
         Returns a tuple of (is_valid, list_of_errors).
         If mutate is True, missing fields with default values will be added to the data.
+        
+        context can be "read", "write", or "both" (default). 
+        - If "read", writeOnly fields are ignored/invalid.
+        - If "write", readOnly fields are prohibited.
         """
         errors = []
-        self._validate_recursive(self.schema, data, "root", errors, mutate)
+        self._validate_recursive(self.schema, data, "root", errors, mutate, context)
         return len(errors) == 0, errors
 
     def get_descriptions(self) -> Dict[str, str]:
@@ -87,13 +91,27 @@ class SchemaValidator:
             for i, item_schema in enumerate(items):
                 self._extract_descriptions(item_schema, f"{path}.items[{i}]", descriptions)
 
-    def _validate_recursive(self, schema: Any, data: Any, path: str, errors: List[str], mutate: bool = False):
+    def _validate_recursive(self, schema: Any, data: Any, path: str, errors: List[str], mutate: bool = False, context: str = "both"):
         if isinstance(schema, str):
             self._check_type(schema, data, path, errors)
             return
         
         if not isinstance(schema, dict):
             errors.append(f"Unsupported schema definition at {path}")
+            return
+
+        # Handle readOnly / writeOnly constraints
+        if context == "read" and schema.get("writeOnly") is True:
+            # In read context, writeOnly fields should typically not be present or are ignored.
+            # For a validator, we treat their presence as an error if they are explicitly marked writeOnly.
+            if data is not None:
+                errors.append(f"Field {path} is writeOnly and should not be present in read context")
+            return
+
+        if context == "write" and schema.get("readOnly") is True:
+            # In write context, readOnly fields must not be provided
+            if data is not None:
+                errors.append(f"Field {path} is readOnly and cannot be modified")
             return
 
         # Handle nullable: if data is None and nullable is True, it's valid
@@ -121,7 +139,7 @@ class SchemaValidator:
             all_options_errors = []
             for i, opt_schema in enumerate(options):
                 opt_errors = []
-                self._validate_recursive(opt_schema, data, path, opt_errors, mutate)
+                self._validate_recursive(opt_schema, data, path, opt_errors, mutate, context)
                 if not opt_errors:
                     any_valid = True
                     break
@@ -139,7 +157,7 @@ class SchemaValidator:
                 return
             
             for opt_schema in options:
-                self._validate_recursive(opt_schema, data, path, errors, mutate)
+                self._validate_recursive(opt_schema, data, path, errors, mutate, context)
             return
 
         # Composition: oneOf
@@ -153,7 +171,7 @@ class SchemaValidator:
             all_options_errors = []
             for i, opt_schema in enumerate(options):
                 opt_errors = []
-                self._validate_recursive(opt_schema, data, path, opt_errors, mutate)
+                self._validate_recursive(opt_schema, data, path, opt_errors, mutate, context)
                 if not opt_errors:
                     valid_count += 1
                 else:
@@ -170,7 +188,7 @@ class SchemaValidator:
         if "not" in schema:
             neg_schema = schema["not"]
             neg_errors = []
-            self._validate_recursive(neg_schema, data, path, neg_errors, mutate)
+            self._validate_recursive(neg_schema, data, path, neg_errors, mutate, context)
             if not neg_errors:
                 errors.append(f"Value at {path} must NOT match the schema provided in 'not'")
             return
@@ -282,10 +300,10 @@ class SchemaValidator:
                     if isinstance(item_schema, list):
                         for i, item in enumerate(data):
                             if i < len(item_schema):
-                                self._validate_recursive(item_schema[i], item, f"{path}[{i}]", errors, mutate)
+                                self._validate_recursive(item_schema[i], item, f"{path}[{i}]", errors, mutate, context)
                     else:
                         for i, item in enumerate(data):
-                            self._validate_recursive(item_schema, item, f"{path}[{i}]", errors, mutate)
+                            self._validate_recursive(item_schema, item, f"{path}[{i}]", errors, mutate, context)
             
             # Size validation for dicts
             elif isinstance(data, dict):
@@ -331,7 +349,7 @@ class SchemaValidator:
                                     errors.append(f"Field {path}.{field} is required because {path}.{key} is present")
                         elif isinstance(dependency, dict):
                             # Schema-based dependency: validate the entire object against the provided schema
-                            self._validate_recursive(dependency, data, path, errors, mutate)
+                            self._validate_recursive(dependency, data, path, errors, mutate, context)
                         else:
                             errors.append(f"Invalid schema definition: dependency for {key} must be a list or a dict at {path}")
 
@@ -384,7 +402,7 @@ class SchemaValidator:
                 if has_default:
                     if mutate:
                         data[key] = default_val
-                    self._validate_recursive(actual_rules, default_val, current_path, errors, mutate)
+                    self._validate_recursive(actual_rules, default_val, current_path, errors, mutate, context)
                     checked_fields.add(key)
                 elif not is_optional and (required_list and key in required_list or not required_list):
                     # If required_list is not provided, any field defined in the schema is required by default
@@ -392,7 +410,7 @@ class SchemaValidator:
                     errors.append(f"Missing required field: {current_path}")
                     checked_fields.add(key)
             else:
-                self._validate_recursive(actual_rules, data[key], current_path, errors, mutate)
+                self._validate_recursive(actual_rules, data[key], current_path, errors, mutate, context)
                 checked_fields.add(key)
 
         # Ensure all fields in 'required' list are handled
@@ -408,7 +426,7 @@ class SchemaValidator:
                     if mutate:
                         data[req_field] = prop_rules["default"]
                     actual_prop_rules = prop_rules.get("optional", prop_rules) if "optional" in prop_rules else prop_rules
-                    self._validate_recursive(actual_prop_rules, prop_rules["default"], current_path, errors, mutate)
+                    self._validate_recursive(actual_prop_rules, prop_rules["default"], current_path, errors, mutate, context)
                 
                 if not has_default:
                     errors.append(f"Missing required field: {current_path}")
@@ -422,14 +440,14 @@ class SchemaValidator:
                 matched_pattern = False
                 for pattern, p_schema in pattern_props.items():
                     if re.search(pattern, key):
-                        self._validate_recursive(p_schema, data[key], f"{path}.{key}", errors, mutate)
+                        self._validate_recursive(p_schema, data[key], f"{path}.{key}", errors, mutate, context)
                         matched_pattern = True
                 
                 if not matched_pattern:
                     if additional_properties is False:
                         errors.append(f"Additional property {key} not allowed at {path}")
                     elif isinstance(additional_properties, (str, dict)):
-                        self._validate_recursive(additional_properties, data[key], f"{path}.{key}", errors, mutate)
+                        self._validate_recursive(additional_properties, data[key], f"{path}.{key}", errors, mutate, context)
 
     def _check_type(self, type_name: str, data: Any, path: str, errors: List[str]):
         expected_type = self.TYPE_MAP.get(type_name)
