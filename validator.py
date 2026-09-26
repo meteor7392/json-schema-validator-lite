@@ -102,21 +102,17 @@ class SchemaValidator:
 
         # Handle readOnly / writeOnly constraints
         if context == "read" and schema.get("writeOnly") is True:
-            # In read context, writeOnly fields should typically not be present or are ignored.
-            # For a validator, we treat their presence as an error if they are explicitly marked writeOnly.
             if data is not None:
                 errors.append(f"Field {path} is writeOnly and should not be present in read context")
             return
 
         if context == "write" and schema.get("readOnly") is True:
-            # In write context, readOnly fields must not be provided
             if data is not None:
                 errors.append(f"Field {path} is readOnly and cannot be modified")
             return
 
-        # Handle nullable: if data is None and nullable is True, it's valid
+        # Handle nullable
         if data is None and schema.get("nullable") is True:
-            # Still check const and enum if present, as they can constrain nullable fields
             if "const" in schema:
                 if schema["const"] is not None:
                     errors.append(f"Value at {path} must be exactly {repr(schema['const'])}, got None")
@@ -199,7 +195,7 @@ class SchemaValidator:
             if data != constant_val:
                 errors.append(f"Value at {path} must be exactly {repr(constant_val)}, got {repr(data)}")
 
-        # Example validation (optional, only if examples list is provided)
+        # Example validation
         if "examples" in schema:
             examples = schema["examples"]
             if not isinstance(examples, list):
@@ -210,7 +206,6 @@ class SchemaValidator:
             type_def = schema["type"]
             
             if data is None:
-                # nullable is handled at the start of _validate_recursive
                 errors.append(f"Value at {path} cannot be null")
                 return
 
@@ -348,7 +343,6 @@ class SchemaValidator:
                                 if field not in data:
                                     errors.append(f"Field {path}.{field} is required because {path}.{key} is present")
                         elif isinstance(dependency, dict):
-                            # Schema-based dependency: validate the entire object against the provided schema
                             self._validate_recursive(dependency, data, path, errors, mutate, context)
                         else:
                             errors.append(f"Invalid schema definition: dependency for {key} must be a list or a dict at {path}")
@@ -360,7 +354,6 @@ class SchemaValidator:
             properties_schema = {}
 
         defined_fields = set()
-        # We consider fields explicitly defined in 'properties' and fields defined implicitly at root level
         for key in properties_schema:
             defined_fields.add(key)
         
@@ -369,7 +362,6 @@ class SchemaValidator:
                 continue
             defined_fields.add(key)
 
-        # First, handle missing fields and defaults
         checked_fields = set()
         required_list = schema.get("required")
         if required_list is not None and not isinstance(required_list, list):
@@ -380,7 +372,6 @@ class SchemaValidator:
 
         for key in defined_fields:
             current_path = f"{path}.{key}"
-            # Prioritize properties_schema over root schema
             rules = properties_schema.get(key) if key in properties_schema else schema.get(key)
             
             is_optional = False
@@ -405,21 +396,17 @@ class SchemaValidator:
                     self._validate_recursive(actual_rules, default_val, current_path, errors, mutate, context)
                     checked_fields.add(key)
                 elif not is_optional and (required_list and key in required_list or not required_list):
-                    # If required_list is not provided, any field defined in the schema is required by default
-                    # If required_list is provided, only fields in it are required
                     errors.append(f"Missing required field: {current_path}")
                     checked_fields.add(key)
             else:
                 self._validate_recursive(actual_rules, data[key], current_path, errors, mutate, context)
                 checked_fields.add(key)
 
-        # Ensure all fields in 'required' list are handled
         for req_field in required_list:
             if req_field not in checked_fields:
                 current_path = f"{path}.{req_field}"
                 prop_rules = properties_schema.get(req_field) if req_field in properties_schema else schema.get(req_field)
                 
-                # Check for default in required field
                 has_default = False
                 if isinstance(prop_rules, dict) and "default" in prop_rules:
                     has_default = True

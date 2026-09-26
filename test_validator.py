@@ -172,6 +172,25 @@ class TestSchemaValidator(unittest.TestCase):
         v3 = SchemaValidator(schema).validate({"meta": {"a": 1}})
         self.assertTrue(v3[0])
 
+    def test_dict_size_validation_camel_case(self):
+        schema = {
+            "meta": {"type": "dict", "minProperties": 1, "maxProperties": 2}
+        }
+        
+        # Too few
+        v1 = SchemaValidator(schema).validate({"meta": {}})
+        self.assertFalse(v1[0])
+        self.assertIn("Dict at root.meta has too few properties (min_properties: 1)", v1[1])
+        
+        # Too many
+        v2 = SchemaValidator(schema).validate({"meta": {"a": 1, "b": 2, "c": 3}})
+        self.assertFalse(v2[0])
+        self.assertIn("Dict at root.meta has too many properties (max_properties: 2)", v2[1])
+        
+        # Valid
+        v3 = SchemaValidator(schema).validate({"meta": {"a": 1}})
+        self.assertTrue(v3[0])
+
     def test_nested_invalid(self):
         schema = {"user": {"id": "integer"}}
         data = {"user": {"id": "abc"}}
