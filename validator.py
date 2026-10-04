@@ -371,6 +371,12 @@ class SchemaValidator:
                         else:
                             errors.append(f"Invalid schema definition: dependency for {key} must be a list or a dict at {path}")
 
+        # Validate property names
+        if "propertyNames" in schema:
+            prop_names_schema = schema["propertyNames"]
+            for key in data:
+                self._validate_recursive(prop_names_schema, key, f"{path}.propertyNames({key})", errors, mutate, context)
+
         additional_properties = schema.get("additionalProperties", True)
         properties_schema = schema.get("properties", {})
         if not isinstance(properties_schema, dict):
@@ -382,7 +388,7 @@ class SchemaValidator:
             defined_fields.add(key)
         
         for key in schema:
-            if key in ("additionalProperties", "dependencies", "required", "properties", "type", "min", "max", "min_properties", "max_properties", "minProperties", "maxProperties", "const", "patternProperties", "nullable", "description", "examples", "readOnly", "writeOnly"):
+            if key in ("additionalProperties", "dependencies", "required", "properties", "type", "min", "max", "min_properties", "max_properties", "minProperties", "maxProperties", "const", "patternProperties", "nullable", "description", "examples", "readOnly", "writeOnly", "propertyNames"):
                 continue
             defined_fields.add(key)
 
