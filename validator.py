@@ -190,6 +190,18 @@ class SchemaValidator:
                 errors.append(f"Value at {path} must NOT match the schema provided in 'not'")
             return
 
+        # Conditional Validation: if, then, else
+        if "if" in schema:
+            if_schema = schema["if"]
+            if_errors = []
+            self._validate_recursive(if_schema, data, path, if_errors, mutate, context)
+            
+            if not if_errors:
+                if "then" in schema:
+                    self._validate_recursive(schema["then"], data, path, errors, mutate, context)
+            elif "else" in schema:
+                self._validate_recursive(schema["else"], data, path, errors, mutate, context)
+
         # Constant value validation
         if "const" in schema:
             constant_val = schema["const"]
