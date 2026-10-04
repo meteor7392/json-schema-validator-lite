@@ -1,5 +1,6 @@
 from typing import Any, Dict, List, Tuple, Union
 import re
+import math
 
 class SchemaValidationError(Exception):
     """Custom exception for schema validation errors."""
@@ -244,8 +245,11 @@ class SchemaValidator:
                     multiple = schema["multipleOf"]
                     if multiple == 0:
                         errors.append(f"Invalid schema definition: 'multipleOf' cannot be 0 at {path}")
-                    elif data % multiple != 0:
-                        errors.append(f"Value at {path} must be a multiple of {multiple}")
+                    else:
+                        # Use math.isclose to handle floating point precision issues
+                        remainder = data % multiple
+                        if not (math.isclose(remainder, 0, abs_tol=1e-9) or math.isclose(remainder, multiple, abs_tol=1e-9)):
+                            errors.append(f"Value at {path} must be a multiple of {multiple}")
             
             # Length and pattern validation for strings
             elif isinstance(data, str):
@@ -298,14 +302,8 @@ class SchemaValidator:
                                 self._validate_recursive(item_schema[i], item, f"{path}[{i}]", errors, mutate, context)
                     else:
                         for i, item in enumerate(data):
-                            # Support for default values in items
                             actual_item_schema = item_schema
                             if isinstance(item_schema, dict) and "default" in item_schema:
-                                # In a real scenario, we might want to check if item is None or missing
-                                # but in a list, the item exists if the index is reached. 
-                                # However, if we allow 'nullable' items or the data is a list of holes,
-                                # we could apply defaults. For now, we treat 'default' as a fallback 
-                                # if the item is explicitly None and nullable is not true.
                                 if item is None and not (isinstance(item_schema, dict) and item_schema.get("nullable")):
                                     if mutate:
                                         data[i] = item_schema["default"]
@@ -461,4 +459,3 @@ class SchemaValidator:
 
         if not isinstance(data, expected_type):
             errors.append(f"Expected {type_name} at {path}, got {type(data).__name__}")
-}
