@@ -425,8 +425,15 @@ class SchemaValidator:
                         data[key] = default_val
                     self._validate_recursive(actual_rules, default_val, current_path, errors, mutate, context)
                     checked_fields.add(key)
-                elif not is_optional and (required_list and key in required_list or not required_list):
-                    errors.append(f"Missing required field: {current_path}")
+                elif not is_optional and (required_list and key in required_list or (not required_list and key not in properties_schema and key in schema)):
+                    # If required_list is empty, we treat implicit root fields (excluding keywords) as required unless optional
+                    # but ONLY if they weren't explicitly put in a 'properties' block where 'required' is the source of truth.
+                    # To align with JSON Schema, if 'properties' is used, we should rely more on 'required'.
+                    # However, we maintain the 'implicit root' behavior for backward compatibility.
+                    if not properties_schema or (key not in properties_schema):
+                        errors.append(f"Missing required field: {current_path}")
+                    elif key in required_list:
+                        errors.append(f"Missing required field: {current_path}")
                     checked_fields.add(key)
             else:
                 self._validate_recursive(actual_rules, data[key], current_path, errors, mutate, context)
