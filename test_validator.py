@@ -62,7 +62,7 @@ class TestSchemaValidator(unittest.TestCase):
         # Too high
         v2 = SchemaValidator(schema).validate({"score": 101})
         self.assertFalse(v2[0])
-        self.assertIn("Value at root.score is too large (max: 100)", v2[1])
+        self.assertIn("Value at root.score is too large (max: 100)", v1[1])
         
         # Valid
         v3 = SchemaValidator(schema).validate({"score": 50})
@@ -489,6 +489,21 @@ class TestSchemaValidator(unittest.TestCase):
         # Both context: everything is okay
         v3 = SchemaValidator(schema).validate(data_write, context="both")
         self.assertTrue(v3[0])
+
+    def test_dict_size_aliases(self):
+        # Test min_properties alias
+        schema_min = {"meta": {"type": "dict", "min_properties": 2}}
+        self.assertTrue(SchemaValidator(schema_min).validate({"meta": {"a": 1, "b": 2}})[0])
+        v1 = SchemaValidator(schema_min).validate({"meta": {"a": 1}})
+        self.assertFalse(v1[0])
+        self.assertIn("Dict at root.meta has too few properties (min_properties: 2)", v1[1])
+
+        # Test max_properties alias
+        schema_max = {"meta": {"type": "dict", "max_properties": 1}}
+        self.assertTrue(SchemaValidator(schema_max).validate({"meta": {"a": 1}})[0])
+        v2 = SchemaValidator(schema_max).validate({"meta": {"a": 1, "b": 2}})
+        self.assertFalse(v2[0])
+        self.assertIn("Dict at root.meta has too many properties (max_properties: 1)", v2[1])
 
 if __name__ == "__main__":
     unittest.main()
