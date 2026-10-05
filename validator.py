@@ -113,17 +113,23 @@ class SchemaValidator:
             return
 
         # Handle nullable
-        if data is None and schema.get("nullable") is True:
-            if "const" in schema:
-                if schema["const"] is not None:
-                    errors.append(f"Value at {path} must be exactly {repr(schema['const'])}, got None")
-            if "enum" in schema:
-                allowed_values = schema["enum"]
-                if not isinstance(allowed_values, list):
-                    errors.append(f"Invalid schema definition: 'enum' must be a list at {path}")
-                elif None not in allowed_values:
-                    errors.append(f"Value at {path} must be one of {allowed_values}, got None")
-            return
+        if data is None:
+            if schema.get("nullable") is True:
+                if "const" in schema:
+                    if schema["const"] is not None:
+                        errors.append(f"Value at {path} must be exactly {repr(schema['const'])}, got None")
+                if "enum" in schema:
+                    allowed_values = schema["enum"]
+                    if not isinstance(allowed_values, list):
+                        errors.append(f"Invalid schema definition: 'enum' must be a list at {path}")
+                    elif None not in allowed_values:
+                        errors.append(f"Value at {path} must be one of {allowed_values}, got None")
+                return
+            else:
+                # Only error if 'type' is specified and not nullable
+                if "type" in schema:
+                    errors.append(f"Value at {path} cannot be null")
+                return
 
         # Composition: anyOf
         if "anyOf" in schema:
@@ -218,10 +224,6 @@ class SchemaValidator:
         if "type" in schema:
             type_def = schema["type"]
             
-            if data is None:
-                errors.append(f"Value at {path} cannot be null")
-                return
-
             if isinstance(type_def, list):
                 valid_type = False
                 for t in type_def:
@@ -319,7 +321,7 @@ class SchemaValidator:
                                 if "default" in item_schema and not item_schema.get("nullable"):
                                     if mutate:
                                         data[i] = item_schema["default"]
-                                        item = data[i]
+                                    item = data[i]
                                     self._validate_recursive(item_schema, item, f"{path}[{i}]", errors, mutate, context)
                                     continue
                             self._validate_recursive(item_schema, item, f"{path}[{i}]", errors, mutate, context)
@@ -426,10 +428,6 @@ class SchemaValidator:
                     self._validate_recursive(actual_rules, default_val, current_path, errors, mutate, context)
                     checked_fields.add(key)
                 elif not is_optional and (required_list and key in required_list or (not required_list and key not in properties_schema and key in schema)):
-                    # If required_list is empty, we treat implicit root fields (excluding keywords) as required unless optional
-                    # but ONLY if they weren't explicitly put in a 'properties' block where 'required' is the source of truth.
-                    # To align with JSON Schema, if 'properties' is used, we should rely more on 'required'.
-                    # However, we maintain the 'implicit root' behavior for backward compatibility.
                     if not properties_schema or (key not in properties_schema):
                         errors.append(f"Missing required field: {current_path}")
                     elif key in required_list:
