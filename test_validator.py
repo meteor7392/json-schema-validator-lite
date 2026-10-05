@@ -468,5 +468,27 @@ class TestSchemaValidator(unittest.TestCase):
         self.assertFalse(v1[0])
         self.assertIn("List at root.list contains duplicate items", v1[1])
 
+    def test_read_only_write_only(self):
+        schema = {
+            "id": {"type": "integer", "readOnly": True},
+            "password": {"type": "string", "writeOnly": True}
+        }
+        
+        # Read context: id is okay, password should not be present
+        data_read = {"id": 1, "password": "secret"}
+        v1 = SchemaValidator(schema).validate(data_read, context="read")
+        self.assertFalse(v1[0])
+        self.assertIn("Field root.password is writeOnly and should not be present in read context", v1[1])
+        
+        # Write context: password is okay, id should not be present
+        data_write = {"id": 1, "password": "secret"}
+        v2 = SchemaValidator(schema).validate(data_write, context="write")
+        self.assertFalse(v2[0])
+        self.assertIn("Field root.id is readOnly and cannot be modified", v2[1])
+        
+        # Both context: everything is okay
+        v3 = SchemaValidator(schema).validate(data_write, context="both")
+        self.assertTrue(v3[0])
+
 if __name__ == "__main__":
     unittest.main()

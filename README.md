@@ -13,6 +13,7 @@ A lightweight, zero-dependency Python library to validate JSON-like dictionaries
 - List/Dict size constraints
 - Composition (anyOf, allOf, oneOf, not)
 - Constant values (const)
+- Access Control (readOnly, writeOnly)
 
 ## Usage
 
