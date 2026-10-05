@@ -314,15 +314,15 @@ class SchemaValidator:
                                 self._validate_recursive(item_schema[i], item, f"{path}[{i}]", errors, mutate, context)
                     else:
                         for i, item in enumerate(data):
-                            actual_item_schema = item_schema
-                            if isinstance(item_schema, dict) and "default" in item_schema:
-                                if item is None and not (isinstance(item_schema, dict) and item_schema.get("nullable")):
+                            # Handle defaults for items if item is None and not explicitly nullable
+                            if item is None and isinstance(item_schema, dict):
+                                if "default" in item_schema and not item_schema.get("nullable"):
                                     if mutate:
                                         data[i] = item_schema["default"]
                                         item = data[i]
                                     self._validate_recursive(item_schema, item, f"{path}[{i}]", errors, mutate, context)
                                     continue
-                            self._validate_recursive(actual_item_schema, item, f"{path}[{i}]", errors, mutate, context)
+                            self._validate_recursive(item_schema, item, f"{path}[{i}]", errors, mutate, context)
             
             # Size validation for dicts
             elif isinstance(data, dict):
