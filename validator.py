@@ -69,7 +69,7 @@ class SchemaValidator:
 
         # Recurse into implicit schema fields (not in 'properties' but at root)
         for key, value in schema.items():
-            if key in ("additionalProperties", "dependencies", "required", "properties", "type", "min", "max", "min_properties", "max_properties", "minProperties", "maxProperties", "const", "patternProperties", "nullable", "description", "examples", "readOnly", "writeOnly"):
+            if key in ("additionalProperties", "dependencies", "required", "properties", "type", "min", "max", "min_properties", "max_properties", "minProperties", "maxProperties", "const", "patternProperties", "nullable", "description", "examples", "readOnly", "writeOnly", "propertyNames"):
                 continue
             if isinstance(value, dict):
                 self._extract_descriptions(value, f"{path}.{key}", descriptions)
