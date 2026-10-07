@@ -28,6 +28,12 @@ class SchemaValidator:
         "dict": dict
     }
 
+    FORMATS = {
+        "email": r"^\S+@\S+\.\S+$",
+        "date": r"^\d{4}-\d{2}-\d{2}$",
+        "uuid": r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    }
+
     def __init__(self, schema: Dict[str, Any]):
         self.schema = schema
 
@@ -284,6 +290,14 @@ class SchemaValidator:
                     pattern = schema["pattern"]
                     if not re.search(pattern, data):
                         errors.append(f"String at {path} does not match pattern: {pattern}")
+                
+                if "format" in schema:
+                    fmt = schema["format"]
+                    if fmt in self.FORMATS:
+                        if not re.search(self.FORMATS[fmt], data):
+                            errors.append(f"String at {path} does not match format: {fmt}")
+                    else:
+                        errors.append(f"Unsupported format '{fmt}' at {path}")
             
             # Item and size validation for lists
             elif isinstance(data, list):

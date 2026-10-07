@@ -120,6 +120,39 @@ class TestSchemaValidator(unittest.TestCase):
         self.assertFalse(v2[0])
         self.assertIn("String at root.email does not match pattern: ^\\S+@\\S+\\.\\S+$", v2[1])
 
+    def test_string_formats(self):
+        schema = {
+            "email": {"type": "string", "format": "email"},
+            "date": {"type": "string", "format": "date"},
+            "uuid": {"type": "string", "format": "uuid"},
+            "invalid_fmt": {"type": "string", "format": "unknown"}
+        }
+        
+        # Valid formats
+        valid_data = {
+            "email": "user@example.com",
+            "date": "2023-12-25",
+            "uuid": "550e8400-e29b-41d4-a716-446655440000",
+            "invalid_fmt": "anything"
+        }
+        # Note: invalid_fmt should produce an error about unsupported format
+        v1 = SchemaValidator(schema).validate(valid_data)
+        self.assertFalse(v1[0])
+        self.assertIn("Unsupported format 'unknown' at root.invalid_fmt", v1[1])
+
+        # Invalid formats
+        invalid_data = {
+            "email": "not-an-email",
+            "date": "25-12-2023",
+            "uuid": "not-a-uuid",
+            "invalid_fmt": "anything"
+        }
+        v2 = SchemaValidator(schema).validate(invalid_data)
+        self.assertFalse(v2[0])
+        self.assertTrue(any("does not match format: email" in e for e in v2[1]))
+        self.assertTrue(any("does not match format: date" in e for e in v2[1]))
+        self.assertTrue(any("does not match format: uuid" in e for e in v2[1]))
+
     def test_list_item_validation(self):
         schema = {
             "tags": {"type": "list", "items": "string"}
@@ -166,7 +199,7 @@ class TestSchemaValidator(unittest.TestCase):
         # Too many
         v2 = SchemaValidator(schema).validate({"meta": {"a": 1, "b": 2, "c": 3}})
         self.assertFalse(v2[0])
-        self.assertIn("Dict at root.meta has too many properties (max_properties: 2)", v2[1])
+        self.assertIn("Dict at root.meta has too many properties (max_properties: 2)", v1[1])
         
         # Valid
         v3 = SchemaValidator(schema).validate({"meta": {"a": 1}})
