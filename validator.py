@@ -138,6 +138,7 @@ class SchemaValidator:
         # Handle nullable
         if data is None:
             if schema.get("nullable") is True:
+                # Even if nullable, other constraints like 'const' or 'enum' must be checked if they exist
                 if "const" in schema:
                     if schema["const"] is not None:
                         self._add_error(path, f"Value at {path} must be exactly {repr(schema['const'])}, got None", errors)
