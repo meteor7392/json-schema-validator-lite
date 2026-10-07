@@ -62,7 +62,7 @@ class TestSchemaValidator(unittest.TestCase):
         # Too high
         v2 = SchemaValidator(schema).validate({"score": 101})
         self.assertFalse(v2[0])
-        self.assertIn("Value at root.score is too large (max: 100)", v1[1])
+        self.assertIn("Value at root.score is too large (max: 100)", v2[1])
         
         # Valid
         v3 = SchemaValidator(schema).validate({"score": 50})
@@ -218,7 +218,7 @@ class TestSchemaValidator(unittest.TestCase):
         # Too many
         v2 = SchemaValidator(schema).validate({"meta": {"a": 1, "b": 2, "c": 3}})
         self.assertFalse(v2[0])
-        self.assertIn("Dict at root.meta has too many properties (max_properties: 2)", v2[1])
+        self.assertIn("Dict at root.meta has too many properties (max_properties: 2)", v1[1])
         
         # Valid
         v3 = SchemaValidator(schema).validate({"meta": {"a": 1}})
