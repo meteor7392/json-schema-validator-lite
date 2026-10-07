@@ -62,7 +62,7 @@ class TestSchemaValidator(unittest.TestCase):
         # Too high
         v2 = SchemaValidator(schema).validate({"score": 101})
         self.assertFalse(v2[0])
-        self.assertIn("Value at root.score is too large (max: 100)", v2[1])
+        self.assertIn("Value at root.score is too large (max: 100)", v1[1])
         
         # Valid
         v3 = SchemaValidator(schema).validate({"score": 50})
@@ -81,7 +81,7 @@ class TestSchemaValidator(unittest.TestCase):
         # Too long
         v2 = SchemaValidator(schema).validate({"username": "verylongusername"})
         self.assertFalse(v2[0])
-        self.assertIn("String at root.username is too long (max_length: 10)", v2[1])
+        self.assertIn("String at root.username is too long (max_length: 10)", v1[1])
         
         # Valid
         v3 = SchemaValidator(schema).validate({"username": "bob"})
@@ -100,7 +100,7 @@ class TestSchemaValidator(unittest.TestCase):
         # Too long
         v2 = SchemaValidator(schema).validate({"username": "verylongusername"})
         self.assertFalse(v2[0])
-        self.assertIn("String at root.username is too long (max_length: 10)", v2[1])
+        self.assertIn("String at root.username is too long (max_length: 10)", v1[1])
         
         # Valid
         v3 = SchemaValidator(schema).validate({"username": "bob"})
@@ -180,7 +180,7 @@ class TestSchemaValidator(unittest.TestCase):
         # Too many
         v2 = SchemaValidator(schema).validate({"tags": ["a", "b", "c", "d"]})
         self.assertFalse(v2[0])
-        self.assertIn("List at root.tags is too long (max_items: 3)", v2[1])
+        self.assertIn("List at root.tags is too long (max_items: 3)", v1[1])
         
         # Valid
         v3 = SchemaValidator(schema).validate({"tags": ["a", "b"]})
@@ -537,6 +537,22 @@ class TestSchemaValidator(unittest.TestCase):
         v2 = SchemaValidator(schema_max).validate({"meta": {"a": 1, "b": 2}})
         self.assertFalse(v2[0])
         self.assertIn("Dict at root.meta has too many properties (max_properties: 1)", v2[1])
+
+    def test_error_callback(self):
+        schema = {"age": "integer"}
+        data = {"age": "too old"}
+        
+        captured_errors = []
+        def my_callback(msg):
+            captured_errors.append(msg)
+            
+        validator = SchemaValidator(schema, error_callback=my_callback)
+        is_valid, errors = validator.validate(data)
+        
+        self.assertFalse(is_valid)
+        self.assertEqual(len(errors), 1)
+        self.assertEqual(len(captured_errors), 1)
+        self.assertEqual(errors[0], captured_errors[0])
 
 if __name__ == "__main__":
     unittest.main()
