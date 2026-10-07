@@ -48,6 +48,15 @@ class SchemaValidator:
         - If "write", readOnly fields are prohibited.
         """
         errors = []
+        # Handle root-level default if data is None
+        if data is None and isinstance(self.schema, dict) and "default" in self.schema:
+            if mutate:
+                # This is tricky as we can't mutate 'data' if it is None, 
+                # but the caller would need the return value. 
+                # Since we return bool/errors, we validate the default value.
+                pass
+            data = self.schema["default"]
+
         self._validate_recursive(self.schema, data, "root", errors, mutate, context)
         return len(errors) == 0, errors
 
