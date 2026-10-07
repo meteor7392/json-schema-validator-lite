@@ -369,6 +369,7 @@ class SchemaValidator:
                                 if field not in data:
                                     errors.append(f"Field {path}.{field} is required because {path}.{key} is present")
                         elif isinstance(dependency, dict):
+                            # Support dependency as a schema that must be valid for the whole object
                             self._validate_recursive(dependency, data, path, errors, mutate, context)
                         else:
                             errors.append(f"Invalid schema definition: dependency for {key} must be a list or a dict at {path}")
@@ -406,6 +407,9 @@ class SchemaValidator:
             current_path = f"{path}.{key}"
             rules = properties_schema.get(key) if key in properties_schema else schema.get(key)
             
+            if rules is None:
+                continue
+
             is_optional = False
             actual_rules = rules
             if isinstance(rules, dict) and "optional" in rules:
@@ -442,6 +446,10 @@ class SchemaValidator:
                 current_path = f"{path}.{req_field}"
                 prop_rules = properties_schema.get(req_field) if req_field in properties_schema else schema.get(req_field)
                 
+                if prop_rules is None:
+                    errors.append(f"Missing required field: {current_path}")
+                    continue
+
                 has_default = False
                 if isinstance(prop_rules, dict) and "default" in prop_rules:
                     has_default = True
