@@ -522,3 +522,4 @@ class SchemaValidator:
 
         if not isinstance(data, expected_type):
             self._add_error(path, f"Expected {type_name} at {path}, got {type(data).__name__}", errors)
+}
