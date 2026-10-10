@@ -62,7 +62,7 @@ class TestSchemaValidator(unittest.TestCase):
         # Too high
         v2 = SchemaValidator(schema).validate({"score": 101})
         self.assertFalse(v2[0])
-        self.assertIn("Value at root.score is too large (max: 100)", v1[1])
+        self.assertIn("Value at root.score is too large (max: 100)", v2[1])
         
         # Valid
         v3 = SchemaValidator(schema).validate({"score": 50})
@@ -81,7 +81,7 @@ class TestSchemaValidator(unittest.TestCase):
         # Too long
         v2 = SchemaValidator(schema).validate({"username": "verylongusername"})
         self.assertFalse(v2[0])
-        self.assertIn("String at root.username is too long (max_length: 10)", v1[1])
+        self.assertIn("String at root.username is too long (max_length: 10)", v2[1])
         
         # Valid
         v3 = SchemaValidator(schema).validate({"username": "bob"})
@@ -100,7 +100,7 @@ class TestSchemaValidator(unittest.TestCase):
         # Too long
         v2 = SchemaValidator(schema).validate({"username": "verylongusername"})
         self.assertFalse(v2[0])
-        self.assertIn("String at root.username is too long (max_length: 10)", v1[1])
+        self.assertIn("String at root.username is too long (max_length: 10)", v2[1])
         
         # Valid
         v3 = SchemaValidator(schema).validate({"username": "bob"})
@@ -180,7 +180,7 @@ class TestSchemaValidator(unittest.TestCase):
         # Too many
         v2 = SchemaValidator(schema).validate({"tags": ["a", "b", "c", "d"]})
         self.assertFalse(v2[0])
-        self.assertIn("List at root.tags is too long (max_items: 3)", v1[1])
+        self.assertIn("List at root.tags is too long (max_items: 3)", v2[1])
         
         # Valid
         v3 = SchemaValidator(schema).validate({"tags": ["a", "b"]})
@@ -199,7 +199,7 @@ class TestSchemaValidator(unittest.TestCase):
         # Too many
         v2 = SchemaValidator(schema).validate({"tags": ["a", "b", "c", "d"]})
         self.assertFalse(v2[0])
-        self.assertIn("List at root.tags is too long (max_items: 3)", v1[1])
+        self.assertIn("List at root.tags is too long (max_items: 3)", v2[1])
         
         # Valid
         v3 = SchemaValidator(schema).validate({"tags": ["a", "b"]})
@@ -218,7 +218,7 @@ class TestSchemaValidator(unittest.TestCase):
         # Too many
         v2 = SchemaValidator(schema).validate({"meta": {"a": 1, "b": 2, "c": 3}})
         self.assertFalse(v2[0])
-        self.assertIn("Dict at root.meta has too many properties (max_properties: 2)", v1[1])
+        self.assertIn("Dict at root.meta has too many properties (max_properties: 2)", v2[1])
         
         # Valid
         v3 = SchemaValidator(schema).validate({"meta": {"a": 1}})
@@ -237,7 +237,7 @@ class TestSchemaValidator(unittest.TestCase):
         # Too many
         v2 = SchemaValidator(schema).validate({"meta": {"a": 1, "b": 2, "c": 3}})
         self.assertFalse(v2[0])
-        self.assertIn("Dict at root.meta has too many properties (max_properties: 2)", v1[1])
+        self.assertIn("Dict at root.meta has too many properties (max_properties: 2)", v2[1])
         
         # Valid
         v3 = SchemaValidator(schema).validate({"meta": {"a": 1}})
@@ -464,7 +464,7 @@ class TestSchemaValidator(unittest.TestCase):
             "other": 123
         })
         self.assertFalse(v2[0])
-        self.assertIn("Additional property other not allowed at root", v1[1])
+        self.assertIn("Additional property other not allowed at root", v2[1])
 
     def test_const_validation(self):
         schema = {
@@ -480,7 +480,7 @@ class TestSchemaValidator(unittest.TestCase):
         # Invalid int
         v2 = SchemaValidator(schema).validate({"version": "1.0.0", "type": 2})
         self.assertFalse(v2[0])
-        self.assertIn("Value at root.type must be exactly 1, got 2", v1[1])
+        self.assertIn("Value at root.type must be exactly 1, got 2", v2[1])
 
     def test_exclusive_constraints(self):
         # Test exclusiveMinimum / minExclusive
@@ -536,7 +536,7 @@ class TestSchemaValidator(unittest.TestCase):
         data_write = {"id": 1, "password": "secret"}
         v2 = SchemaValidator(schema).validate(data_write, context="write")
         self.assertFalse(v2[0])
-        self.assertIn("Field root.id is readOnly and cannot be modified", v1[1])
+        self.assertIn("Field root.id is readOnly and cannot be modified", v2[1])
         
         # Both context: everything is okay
         v3 = SchemaValidator(schema).validate(data_write, context="both")
@@ -555,7 +555,7 @@ class TestSchemaValidator(unittest.TestCase):
         self.assertTrue(SchemaValidator(schema_max).validate({"meta": {"a": 1}})[0])
         v2 = SchemaValidator(schema_max).validate({"meta": {"a": 1, "b": 2}})
         self.assertFalse(v2[0])
-        self.assertIn("Dict at root.meta has too many properties (max_properties: 1)", v1[1])
+        self.assertIn("Dict at root.meta has too many properties (max_properties: 1)", v2[1])
 
     def test_error_callback(self):
         schema = {"age": "integer"}
