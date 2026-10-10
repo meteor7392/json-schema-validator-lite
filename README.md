@@ -14,6 +14,7 @@ A lightweight, zero-dependency Python library to validate JSON-like dictionaries
 - Composition (anyOf, allOf, oneOf, not)
 - Constant values (const)
 - Access Control (readOnly, writeOnly)
+- Nullable fields support
 
 ## Usage
 

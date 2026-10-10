@@ -202,7 +202,9 @@ class SchemaValidator:
 
     def _validate_recursive(self, schema: Any, data: Any, path: str, errors: List[str], mutate: bool = False, context: str = "both", strict: bool = False):
         if isinstance(schema, str):
-            self._check_type(schema, data, path, errors)
+            # To support 'nullable' on string shortcuts, we treat shortcuts as a simple dict schema
+            schema_dict = {"type": schema}
+            self._validate_recursive(schema_dict, data, path, errors, mutate, context, strict)
             return
         
         if not isinstance(schema, dict):
