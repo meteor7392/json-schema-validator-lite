@@ -62,7 +62,7 @@ class TestSchemaValidator(unittest.TestCase):
         # Too high
         v2 = SchemaValidator(schema).validate({"score": 101})
         self.assertFalse(v2[0])
-        self.assertIn("Value at root.score is too large (max: 100)", v1[1])
+        self.assertIn("Value at root.score is too large (max: 100)", v2[1])
         
         # Valid
         v3 = SchemaValidator(schema).validate({"score": 50})
@@ -81,7 +81,7 @@ class TestSchemaValidator(unittest.TestCase):
         # Too long
         v2 = SchemaValidator(schema).validate({"username": "verylongusername"})
         self.assertFalse(v2[0])
-        self.assertIn("String at root.username is too long (max_length: 10)", v1[1])
+        self.assertIn("String at root.username is too long (max_length: 10)", v2[1])
         
         # Valid
         v3 = SchemaValidator(schema).validate({"username": "bob"})
@@ -100,7 +100,7 @@ class TestSchemaValidator(unittest.TestCase):
         # Too long
         v2 = SchemaValidator(schema).validate({"username": "verylongusername"})
         self.assertFalse(v2[0])
-        self.assertIn("String at root.username is too long (max_length: 10)", v1[1])
+        self.assertIn("String at root.username is too long (max_length: 10)", v2[1])
         
         # Valid
         v3 = SchemaValidator(schema).validate({"username": "bob"})
@@ -180,7 +180,26 @@ class TestSchemaValidator(unittest.TestCase):
         # Too many
         v2 = SchemaValidator(schema).validate({"tags": ["a", "b", "c", "d"]})
         self.assertFalse(v2[0])
-        self.assertIn("List at root.tags is too long (max_items: 3)", v1[1])
+        self.assertIn("List at root.tags is too long (max_items: 3)", v2[1])
+        
+        # Valid
+        v3 = SchemaValidator(schema).validate({"tags": ["a", "b"]})
+        self.assertTrue(v3[0])
+
+    def test_list_size_validation_camel_case(self):
+        schema = {
+            "tags": {"type": "list", "minItems": 2, "maxItems": 3}
+        }
+        
+        # Too few
+        v1 = SchemaValidator(schema).validate({"tags": ["a"]})
+        self.assertFalse(v1[0])
+        self.assertIn("List at root.tags is too short (min_items: 2)", v1[1])
+        
+        # Too many
+        v2 = SchemaValidator(schema).validate({"tags": ["a", "b", "c", "d"]})
+        self.assertFalse(v2[0])
+        self.assertIn("List at root.tags is too long (max_items: 3)", v2[1])
         
         # Valid
         v3 = SchemaValidator(schema).validate({"tags": ["a", "b"]})
@@ -199,7 +218,7 @@ class TestSchemaValidator(unittest.TestCase):
         # Too many
         v2 = SchemaValidator(schema).validate({"meta": {"a": 1, "b": 2, "c": 3}})
         self.assertFalse(v2[0])
-        self.assertIn("Dict at root.meta has too many properties (max_properties: 2)", v1[1])
+        self.assertIn("Dict at root.meta has too many properties (max_properties: 2)", v2[1])
         
         # Valid
         v3 = SchemaValidator(schema).validate({"meta": {"a": 1}})
@@ -218,7 +237,7 @@ class TestSchemaValidator(unittest.TestCase):
         # Too many
         v2 = SchemaValidator(schema).validate({"meta": {"a": 1, "b": 2, "c": 3}})
         self.assertFalse(v2[0])
-        self.assertIn("Dict at root.meta has too many properties (max_properties: 2)", v1[1])
+        self.assertIn("Dict at root.meta has too many properties (max_properties: 2)", v2[1])
         
         # Valid
         v3 = SchemaValidator(schema).validate({"meta": {"a": 1}})
