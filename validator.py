@@ -52,9 +52,6 @@ class SchemaValidator:
         # Handle root-level default if data is None
         if data is None and isinstance(self.schema, dict) and "default" in self.schema:
             if mutate:
-                # This is tricky as we can't mutate 'data' if it is None, 
-                # but the caller would need the return value. 
-                # Since we return bool/errors, we validate the default value.
                 pass
             data = self.schema["default"]
 
@@ -77,20 +74,17 @@ class SchemaValidator:
         if "description" in schema:
             descriptions[path] = schema["description"]
 
-        # Recurse into properties
         properties = schema.get("properties", {})
         if isinstance(properties, dict):
             for key, sub_schema in properties.items():
                 self._extract_descriptions(sub_schema, f"{path}.{key}", descriptions)
 
-        # Recurse into implicit schema fields (not in 'properties' but at root)
         for key, value in schema.items():
             if key in ("additionalProperties", "dependencies", "required", "properties", "type", "min", "max", "min_properties", "max_properties", "minProperties", "maxProperties", "const", "patternProperties", "nullable", "description", "examples", "readOnly", "writeOnly", "propertyNames"):
                 continue
             if isinstance(value, dict):
                 self._extract_descriptions(value, f"{path}.{key}", descriptions)
 
-        # Recurse into composition
         for comp in ("anyOf", "allOf", "oneOf"):
             options = schema.get(comp)
             if isinstance(options, list):
@@ -100,7 +94,6 @@ class SchemaValidator:
         if "not" in schema:
             self._extract_descriptions(schema["not"], f"{path}.not", descriptions)
 
-        # Recurse into list items
         items = schema.get("items")
         if isinstance(items, dict):
             self._extract_descriptions(items, f"{path}.items", descriptions)
@@ -124,7 +117,6 @@ class SchemaValidator:
             self._add_error(path, "Unsupported schema definition", errors)
             return
 
-        # Handle readOnly / writeOnly constraints
         if context == "read" and schema.get("writeOnly") is True:
             if data is not None:
                 self._add_error(path, f"Field {path} is writeOnly and should not be present in read context", errors)
@@ -135,10 +127,8 @@ class SchemaValidator:
                 self._add_error(path, f"Field {path} is readOnly and cannot be modified", errors)
             return
 
-        # Handle nullable
         if data is None:
             if schema.get("nullable") is True:
-                # Even if nullable, other constraints like 'const' or 'enum' must be checked if they exist
                 if "const" in schema:
                     if schema["const"] is not None:
                         self._add_error(path, f"Value at {path} must be exactly {repr(schema['const'])}, got None", errors)
@@ -150,18 +140,15 @@ class SchemaValidator:
                         self._add_error(path, f"Value at {path} must be one of {allowed_values}, got None", errors)
                 return
             else:
-                # Only error if 'type' is specified and not nullable
                 if "type" in schema:
                     self._add_error(path, f"Value at {path} cannot be null", errors)
                 return
 
-        # Composition: anyOf
         if "anyOf" in schema:
             options = schema["anyOf"]
             if not isinstance(options, list):
                 self._add_error(path, f"Invalid schema definition: 'anyOf' must be a list at {path}", errors)
                 return
-            
             any_valid = False
             all_options_errors = []
             for i, opt_schema in enumerate(options):
@@ -171,29 +158,24 @@ class SchemaValidator:
                     any_valid = True
                     break
                 all_options_errors.append(f"Option {i}: {'; '.join(opt_errors)}")
-            
             if not any_valid:
                 self._add_error(path, f"Value at {path} does not match any of the required schemas in anyOf. Errors: [{ ' | '.join(all_options_errors) }]", errors)
             return
 
-        # Composition: allOf
         if "allOf" in schema:
             options = schema["allOf"]
             if not isinstance(options, list):
                 self._add_error(path, f"Invalid schema definition: 'allOf' must be a list at {path}", errors)
                 return
-            
             for opt_schema in options:
                 self._validate_recursive(opt_schema, data, path, errors, mutate, context)
             return
 
-        # Composition: oneOf
         if "oneOf" in schema:
             options = schema["oneOf"]
             if not isinstance(options, list):
                 self._add_error(path, f"Invalid schema definition: 'oneOf' must be a list at {path}", errors)
                 return
-            
             valid_count = 0
             all_options_errors = []
             for i, opt_schema in enumerate(options):
@@ -203,7 +185,6 @@ class SchemaValidator:
                     valid_count += 1
                 else:
                     all_options_errors.append(f"Option {i}: {'; '.join(opt_errors)}")
-            
             if valid_count != 1:
                 err_msg = f"Value at {path} must match exactly one schema in oneOf (matched {valid_count})"
                 if valid_count == 0:
@@ -211,7 +192,6 @@ class SchemaValidator:
                 self._add_error(path, err_msg, errors)
             return
 
-        # Negation: not
         if "not" in schema:
             neg_schema = schema["not"]
             neg_errors = []
@@ -220,34 +200,28 @@ class SchemaValidator:
                 self._add_error(path, f"Value at {path} must NOT match the schema provided in 'not'", errors)
             return
 
-        # Conditional Validation: if, then, else
         if "if" in schema:
             if_schema = schema["if"]
             if_errors = []
             self._validate_recursive(if_schema, data, path, if_errors, mutate, context)
-            
             if not if_errors:
                 if "then" in schema:
                     self._validate_recursive(schema["then"], data, path, errors, mutate, context)
             elif "else" in schema:
                 self._validate_recursive(schema["else"], data, path, errors, mutate, context)
 
-        # Constant value validation
         if "const" in schema:
             constant_val = schema["const"]
             if data != constant_val:
                 self._add_error(path, f"Value at {path} must be exactly {repr(constant_val)}, got {repr(data)}", errors)
 
-        # Example validation
         if "examples" in schema:
             examples = schema["examples"]
             if not isinstance(examples, list):
                 self._add_error(path, f"Invalid schema definition: 'examples' must be a list at {path}", errors)
 
-        # Check if this is a constraint definition
         if "type" in schema:
             type_def = schema["type"]
-            
             if isinstance(type_def, list):
                 valid_type = False
                 for t in type_def:
@@ -264,32 +238,26 @@ class SchemaValidator:
                 self._add_error(path, f"Invalid schema definition: 'type' must be a string or list of strings at {path}", errors)
                 return
             
-            # Range validation for numbers
             if isinstance(data, (int, float)):
                 if "min" in schema and data < schema["min"]:
                     self._add_error(path, f"Value at {path} is too small (min: {schema['min']})", errors)
                 if "max" in schema and data > schema["max"]:
                     self._add_error(path, f"Value at {path} is too large (max: {schema['max']})", errors)
-                
                 ex_min = schema.get("exclusiveMinimum") if "exclusiveMinimum" in schema else schema.get("minExclusive")
                 if ex_min is not None and data <= ex_min:
                     self._add_error(path, f"Value at {path} must be strictly greater than {ex_min}", errors)
-                
                 ex_max = schema.get("exclusiveMaximum") if "exclusiveMaximum" in schema else schema.get("maxExclusive")
                 if ex_max is not None and data >= ex_max:
                     self._add_error(path, f"Value at {path} must be strictly less than {ex_max}", errors)
-                
                 if "multipleOf" in schema:
                     multiple = schema["multipleOf"]
                     if multiple == 0:
                         self._add_error(path, f"Invalid schema definition: 'multipleOf' cannot be 0 at {path}", errors)
                     else:
-                        # Use math.isclose to handle floating point precision issues
                         remainder = data % multiple
                         if not (math.isclose(remainder, 0, abs_tol=1e-9) or math.isclose(remainder, multiple, abs_tol=1e-9)):
                             self._add_error(path, f"Value at {path} must be a multiple of {multiple}", errors)
             
-            # Length and pattern validation for strings
             elif isinstance(data, str):
                 length = len(data)
                 min_len = schema.get("minLength") if "minLength" in schema else schema.get("min_length")
@@ -297,18 +265,15 @@ class SchemaValidator:
                     self._add_error(path, f"String at {path} is too short (min_length: {min_len})", errors)
                 elif "min" in schema and length < schema["min"]:
                     self._add_error(path, f"String at {path} is too short (min: {schema['min']})", errors)
-                
                 max_len = schema.get("maxLength") if "maxLength" in schema else schema.get("max_length")
                 if max_len is not None and length > max_len:
                     self._add_error(path, f"String at {path} is too long (max_length: {max_len})", errors)
                 elif "max" in schema and length > schema["max"]:
                     self._add_error(path, f"String at {path} is too long (max: {schema['max']})", errors)
-                
                 if "pattern" in schema:
                     pattern = schema["pattern"]
                     if not re.search(pattern, data):
                         self._add_error(path, f"String at {path} does not match pattern: {pattern}", errors)
-                
                 if "format" in schema:
                     fmt = schema["format"]
                     if fmt in self.FORMATS:
@@ -317,7 +282,6 @@ class SchemaValidator:
                     else:
                         self._add_error(path, f"Unsupported format '{fmt}' at {path}", errors)
             
-            # Item and size validation for lists
             elif isinstance(data, list):
                 length = len(data)
                 min_items = schema.get("minItems") if "minItems" in schema else schema.get("min_items")
@@ -325,13 +289,11 @@ class SchemaValidator:
                     self._add_error(path, f"List at {path} is too short (min_items: {min_items})", errors)
                 elif "min" in schema and length < schema["min"]:
                     self._add_error(path, f"List at {path} is too short (min: {schema['min']})", errors)
-                
                 max_items = schema.get("maxItems") if "maxItems" in schema else schema.get("max_items")
                 if max_items is not None and length > max_items:
                     self._add_error(path, f"List at {path} is too long (max_items: {max_items})", errors)
                 elif "max" in schema and length > schema["max"]:
                     self._add_error(path, f"List at {path} is too long (max: {schema['max']})", errors)
-                
                 if schema.get("uniqueItems") is True:
                     seen = []
                     for item in data:
@@ -339,7 +301,6 @@ class SchemaValidator:
                             self._add_error(path, f"List at {path} contains duplicate items", errors)
                             break
                         seen.append(item)
-
                 if "items" in schema:
                     item_schema = schema["items"]
                     if isinstance(item_schema, list):
@@ -348,7 +309,6 @@ class SchemaValidator:
                                 self._validate_recursive(item_schema[i], item, f"{path}[{i}]", errors, mutate, context)
                     else:
                         for i, item in enumerate(data):
-                            # Handle defaults for items if item is None and not explicitly nullable
                             if item is None and isinstance(item_schema, dict):
                                 if "default" in item_schema and not item_schema.get("nullable"):
                                     if mutate:
@@ -358,7 +318,6 @@ class SchemaValidator:
                                     continue
                             self._validate_recursive(item_schema, item, f"{path}[{i}]", errors, mutate, context)
             
-            # Size validation for dicts
             elif isinstance(data, dict):
                 length = len(data)
                 min_props = schema.get("minProperties") if "minProperties" in schema else schema.get("min_properties")
@@ -366,29 +325,24 @@ class SchemaValidator:
                     self._add_error(path, f"Dict at {path} has too few properties (min_properties: {min_props})", errors)
                 elif "min" in schema and length < schema["min"]:
                     self._add_error(path, f"Dict at {path} has too few properties (min: {schema['min']})", errors)
-                
                 max_props = schema.get("maxProperties") if "maxProperties" in schema else schema.get("max_properties")
                 if max_props is not None and length > max_props:
                     self._add_error(path, f"Dict at {path} has too many properties (max_properties: {max_props})", errors)
                 elif "max" in schema and length > schema["max"]:
                     self._add_error(path, f"Dict at {path} has too many properties (max: {schema['max']})", errors)
             
-            # Enum validation
             if "enum" in schema:
                 allowed_values = schema["enum"]
                 if not isinstance(allowed_values, list):
                     self._add_error(path, f"Invalid schema definition: 'enum' must be a list at {path}", errors)
                 elif data not in allowed_values:
                     self._add_error(path, f"Value at {path} must be one of {allowed_values}, got {repr(data)}", errors)
-            
             return
 
-        # Object validation
         if not isinstance(data, dict):
             self._add_error(path, f"Expected dict at {path}, got {type(data).__name__}", errors)
             return
         
-        # Check for dependencies
         if "dependencies" in schema:
             deps = schema["dependencies"]
             if not isinstance(deps, dict):
@@ -401,12 +355,10 @@ class SchemaValidator:
                                 if field not in data:
                                     self._add_error(path, f"Field {path}.{field} is required because {path}.{key} is present", errors)
                         elif isinstance(dependency, dict):
-                            # Support dependency as a schema that must be valid for the whole object
                             self._validate_recursive(dependency, data, path, errors, mutate, context)
                         else:
                             self._add_error(path, f"Invalid schema definition: dependency for {key} must be a list or a dict at {path}", errors)
 
-        # Validate property names
         if "propertyNames" in schema:
             prop_names_schema = schema["propertyNames"]
             for key in data:
@@ -438,16 +390,13 @@ class SchemaValidator:
         for key in defined_fields:
             current_path = f"{path}.{key}"
             rules = properties_schema.get(key) if key in properties_schema else schema.get(key)
-            
             if rules is None:
                 continue
-
             is_optional = False
             actual_rules = rules
             if isinstance(rules, dict) and "optional" in rules:
                 is_optional = True
                 actual_rules = rules["optional"]
-
             if key not in data:
                 default_val = None
                 has_default = False
@@ -457,7 +406,6 @@ class SchemaValidator:
                 elif isinstance(actual_rules, dict) and "default" in actual_rules:
                     default_val = actual_rules["default"]
                     has_default = True
-
                 if has_default:
                     if mutate:
                         data[key] = default_val
@@ -477,11 +425,9 @@ class SchemaValidator:
             if req_field not in checked_fields:
                 current_path = f"{path}.{req_field}"
                 prop_rules = properties_schema.get(req_field) if req_field in properties_schema else schema.get(req_field)
-                
                 if prop_rules is None:
                     self._add_error(current_path, f"Missing required field: {current_path}", errors)
                     continue
-
                 has_default = False
                 if isinstance(prop_rules, dict) and "default" in prop_rules:
                     has_default = True
@@ -489,7 +435,6 @@ class SchemaValidator:
                         data[req_field] = prop_rules["default"]
                     actual_prop_rules = prop_rules.get("optional", prop_rules) if "optional" in prop_rules else prop_rules
                     self._validate_recursive(actual_prop_rules, prop_rules["default"], current_path, errors, mutate, context)
-                
                 if not has_default:
                     self._add_error(current_path, f"Missing required field: {current_path}", errors)
 
@@ -504,7 +449,6 @@ class SchemaValidator:
                     if re.search(pattern, key):
                         self._validate_recursive(p_schema, data[key], f"{path}.{key}", errors, mutate, context)
                         matched_pattern = True
-                
                 if not matched_pattern:
                     if additional_properties is False:
                         self._add_error(path, f"Additional property {key} not allowed at {path}", errors)
@@ -516,10 +460,7 @@ class SchemaValidator:
         if expected_type is None:
             self._add_error(path, f"Invalid schema type '{type_name}' at {path}", errors)
             return
-        
         if type_name == "float" and isinstance(data, (int, float)):
             return
-
         if not isinstance(data, expected_type):
             self._add_error(path, f"Expected {type_name} at {path}, got {type(data).__name__}", errors)
-}
