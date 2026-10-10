@@ -127,6 +127,15 @@ class SchemaValidator:
                         # Handle optional wrapper
                         actual_sub = sub_schema.get("optional", sub_schema) if isinstance(sub_schema, dict) else sub_schema
                         sample_dict[key] = self._generate_sample_recursive(actual_sub)
+                
+                # Handle propertyNames sample
+                prop_names_schema = schema.get("propertyNames")
+                if prop_names_schema and not sample_dict:
+                    # If no properties are defined, create one key that fits propertyNames
+                    sample_key = self._generate_sample_recursive(prop_names_schema)
+                    if isinstance(sample_key, str):
+                        sample_dict[sample_key] = self._generate_sample_recursive(schema.get("additionalProperties", "string"))
+
                 return sample_dict
             elif type_def == "list":
                 items_schema = schema.get("items")
