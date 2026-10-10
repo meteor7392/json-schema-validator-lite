@@ -31,7 +31,7 @@ class SchemaValidator:
     FORMATS = {
         "email": r"^\S+@\S+\.\S+$",
         "date": r"^\d{4}-\d{2}-\d{2}$",
-        "uuid": r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        "uuid": r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
     }
 
     def __init__(self, schema: Dict[str, Any], error_callback: Optional[Callable[[str], None]] = None):
@@ -51,8 +51,6 @@ class SchemaValidator:
         errors = []
         # Handle root-level default if data is None
         if data is None and isinstance(self.schema, dict) and "default" in self.schema:
-            if mutate:
-                pass
             data = self.schema["default"]
 
         self._validate_recursive(self.schema, data, "root", errors, mutate, context)
