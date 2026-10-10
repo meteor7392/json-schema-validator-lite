@@ -76,6 +76,89 @@ class SchemaValidator:
         self._extract_descriptions(self.schema, "root", descriptions)
         return descriptions
 
+    def generate_sample(self) -> Any:
+        """
+        Generates a sample data object that satisfies the schema using default values 
+        where possible, and basic placeholders for types otherwise.
+        """
+        return self._generate_sample_recursive(self.schema)
+
+    def _generate_sample_recursive(self, schema: Any) -> Any:
+        if isinstance(schema, str):
+            return self._get_type_placeholder(schema)
+        
+        if not isinstance(schema, dict):
+            return None
+
+        if "default" in schema:
+            return schema["default"]
+        
+        if "const" in schema:
+            return schema["const"]
+
+        if "enum" in schema and isinstance(schema["enum"], list) and schema["enum"]:
+            return schema["enum"][0]
+
+        if "anyOf" in schema and isinstance(schema["anyOf"], list) and schema["anyOf"]:
+            return self._generate_sample_recursive(schema["anyOf"][0])
+        
+        if "allOf" in schema and isinstance(schema["allOf"], list) and schema["allOf"]:
+            # Merge allOf samples (simplified: use the first one as base)
+            base = self._generate_sample_recursive(schema["allOf"][0])
+            if isinstance(base, dict):
+                for s in schema["allOf"][1:]:
+                    sample = self._generate_sample_recursive(s)
+                    if isinstance(sample, dict):
+                        base.update(sample)
+            return base
+
+        if "oneOf" in schema and isinstance(schema["oneOf"], list) and schema["oneOf"]:
+            return self._generate_sample_recursive(schema["oneOf"][0])
+
+        type_def = schema.get("type")
+        if isinstance(type_def, list) and type_def:
+            return self._get_type_placeholder(type_def[0])
+        elif isinstance(type_def, str):
+            if type_def == "dict":
+                sample_dict = {}
+                properties = schema.get("properties", {})
+                if isinstance(properties, dict):
+                    for key, sub_schema in properties.items():
+                        # Handle optional wrapper
+                        actual_sub = sub_schema.get("optional", sub_schema) if isinstance(sub_schema, dict) else sub_schema
+                        sample_dict[key] = self._generate_sample_recursive(actual_sub)
+                return sample_dict
+            elif type_def == "list":
+                items_schema = schema.get("items")
+                if items_schema:
+                    return [self._generate_sample_recursive(items_schema)]
+                return []
+            else:
+                return self._get_type_placeholder(type_def)
+        
+        # If no type but it's a dict with keys that aren't schema keywords, it's an implicit dict
+        keywords = ("additionalProperties", "dependencies", "required", "properties", "type", "min", "max", "min_properties", "max_properties", "minProperties", "maxProperties", "const", "patternProperties", "nullable", "description", "examples", "readOnly", "writeOnly", "propertyNames", "anyOf", "allOf", "oneOf", "not", "if", "then", "else", "enum", "default")
+        implicit_props = {k: v for k, v in schema.items() if k not in keywords}
+        if implicit_props:
+            sample_dict = {}
+            for k, v in implicit_props.items():
+                actual_v = v.get("optional", v) if isinstance(v, dict) else v
+                sample_dict[k] = self._generate_sample_recursive(actual_v)
+            return sample_dict
+
+        return None
+
+    def _get_type_placeholder(self, type_name: str) -> Any:
+        placeholders = {
+            "string": "sample_string",
+            "integer": 0,
+            "float": 0.0,
+            "boolean": True,
+            "list": [],
+            "dict": {}
+        }
+        return placeholders.get(type_name, None)
+
     def _extract_descriptions(self, schema: Any, path: str, descriptions: Dict[str, str]):
         if not isinstance(schema, dict):
             return
@@ -474,3 +557,4 @@ class SchemaValidator:
             return
         if not isinstance(data, expected_type):
             self._add_error(path, f"Expected {type_name} at {path}, got {type(data).__name__}", errors)
+}
