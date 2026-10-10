@@ -573,5 +573,32 @@ class TestSchemaValidator(unittest.TestCase):
         self.assertEqual(len(captured_errors), 1)
         self.assertEqual(errors[0], captured_errors[0])
 
+    def test_generate_sample_nested(self):
+        schema = {
+            "user": {
+                "type": "dict",
+                "properties": {
+                    "name": "string",
+                    "roles": {
+                        "type": "list",
+                        "items": {
+                            "type": "dict",
+                            "properties": {
+                                "id": "integer",
+                                "label": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        sample = SchemaValidator(schema).generate_sample()
+        self.assertIsInstance(sample, dict)
+        self.assertIn("user", sample)
+        self.assertIn("name", sample["user"])
+        self.assertIsInstance(sample["user"]["roles"], list)
+        self.assertIsInstance(sample["user"]["roles"][0], dict)
+        self.assertIn("id", sample["user"]["roles"][0])
+
 if __name__ == "__main__":
     unittest.main()
