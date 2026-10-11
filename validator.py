@@ -146,7 +146,7 @@ class SchemaValidator:
                 return self._get_type_placeholder(type_def)
         
         # If no type but it's a dict with keys that aren't schema keywords, it's an implicit dict
-        keywords = ("additionalProperties", "dependencies", "required", "properties", "type", "min", "max", "min_properties", "max_properties", "minProperties", "maxProperties", "const", "patternProperties", "nullable", "description", "examples", "readOnly", "writeOnly", "propertyNames", "anyOf", "allOf", "oneOf", "not", "if", "then", "else", "enum", "default")
+        keywords = ("additionalProperties", "dependencies", "required", "properties", "type", "min", "max", "min_properties", "max_properties", "minProperties", "maxProperties", "const", "patternProperties", "nullable", "description", "examples", "readOnly", "writeOnly", "propertyNames", "anyOf", "allOf", "oneOf", "not", "if", "then", "else", "enum", "default", "dependentRequired", "dependentSchemas")
         implicit_props = {k: v for k, v in schema.items() if k not in keywords}
         if implicit_props:
             sample_dict = {}
@@ -181,7 +181,7 @@ class SchemaValidator:
                 self._extract_descriptions(sub_schema, f"{path}.{key}", descriptions)
 
         for key, value in schema.items():
-            if key in ("additionalProperties", "dependencies", "required", "properties", "type", "min", "max", "min_properties", "max_properties", "minProperties", "maxProperties", "const", "patternProperties", "nullable", "description", "examples", "readOnly", "writeOnly", "propertyNames"):
+            if key in ("additionalProperties", "dependencies", "required", "properties", "type", "min", "max", "min_properties", "max_properties", "minProperties", "maxProperties", "const", "patternProperties", "nullable", "description", "examples", "readOnly", "writeOnly", "propertyNames", "dependentRequired", "dependentSchemas"):
                 continue
             if isinstance(value, dict):
                 self._extract_descriptions(value, f"{path}.{key}", descriptions)
@@ -467,6 +467,31 @@ class SchemaValidator:
             for key in data:
                 self._validate_recursive(prop_names_schema, key, f"{path}.propertyNames({key})", errors, mutate, context, strict)
 
+        # Implement dependentRequired
+        if "dependentRequired" in schema:
+            dep_req = schema["dependentRequired"]
+            if not isinstance(dep_req, dict):
+                self._add_error(path, f"Invalid schema definition: 'dependentRequired' must be a dict at {path}", errors)
+            else:
+                for key, required_fields in dep_req.items():
+                    if key in data:
+                        if not isinstance(required_fields, list):
+                            self._add_error(path, f"Invalid schema definition: 'dependentRequired' for {key} must be a list at {path}", errors)
+                        else:
+                            for field in required_fields:
+                                if field not in data:
+                                    self._add_error(path, f"Field {path}.{field} is required because {path}.{key} is present", errors)
+
+        # Implement dependentSchemas
+        if "dependentSchemas" in schema:
+            dep_schemes = schema["dependentSchemas"]
+            if not isinstance(dep_schemes, dict):
+                self._add_error(path, f"Invalid schema definition: 'dependentSchemas' must be a dict at {path}", errors)
+            else:
+                for key, sub_schema in dep_schemes.items():
+                    if key in data:
+                        self._validate_recursive(sub_schema, data, path, errors, mutate, context, strict)
+
         additional_properties = schema.get("additionalProperties", True)
         properties_schema = schema.get("properties", {})
         if not isinstance(properties_schema, dict):
@@ -479,7 +504,7 @@ class SchemaValidator:
         
         if not strict:
             for key in schema:
-                if key in ("additionalProperties", "dependencies", "required", "properties", "type", "min", "max", "min_properties", "max_properties", "minProperties", "maxProperties", "const", "patternProperties", "nullable", "description", "examples", "readOnly", "writeOnly", "propertyNames"):
+                if key in ("additionalProperties", "dependencies", "required", "properties", "type", "min", "max", "min_properties", "max_properties", "minProperties", "maxProperties", "const", "patternProperties", "nullable", "description", "examples", "readOnly", "writeOnly", "propertyNames", "dependentRequired", "dependentSchemas"):
                     continue
                 defined_fields.add(key)
 
